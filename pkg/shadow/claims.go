@@ -1,0 +1,157 @@
+package shadow
+
+import (
+	"context"
+	"fmt"
+
+	resourceapi "k8s.io/api/resource/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	resourceclient "k8s.io/client-go/kubernetes/typed/resource/v1"
+	"k8s.io/klog/v2"
+
+	"github.com/openshift-psap/composite-dra-driver/pkg/store"
+)
+
+// ClaimManager creates and deletes shadow ResourceClaims for underlying drivers.
+type ClaimManager struct {
+	client     resourceclient.ResourceV1Interface
+	driverName string
+}
+
+func NewClaimManager(client resourceclient.ResourceV1Interface, driverName string) *ClaimManager {
+	return &ClaimManager{
+		client:     client,
+		driverName: driverName,
+	}
+}
+
+// ShadowClaimInfo holds the created shadow claim details needed for gRPC calls.
+type ShadowClaimInfo struct {
+	Namespace string
+	Name      string
+	UID       string
+}
+
+// Create builds and persists a shadow ResourceClaim for one underlying device member.
+// The shadow claim has:
+// - Pre-filled allocation pointing to the specific underlying device
+// - ReservedFor set to the pod that owns the composite claim
+// - OwnerReference pointing to the composite claim for GC
+func (m *ClaimManager) Create(
+	ctx context.Context,
+	compositeClaim *resourceapi.ResourceClaim,
+	member *store.DeviceMember,
+	requestName string,
+	opaqueConfig []byte,
+) (*ShadowClaimInfo, error) {
+	shadowName := fmt.Sprintf("shadow-%s-%s-%s", compositeClaim.Name, member.SourceName, member.Device)
+	if len(shadowName) > 63 {
+		shadowName = shadowName[:63]
+	}
+
+	allocationResult := resourceapi.AllocationResult{
+		Devices: resourceapi.DeviceAllocationResult{
+			Results: []resourceapi.DeviceRequestAllocationResult{
+				{
+					Request: requestName,
+					Driver:  member.Driver,
+					Pool:    member.Pool,
+					Device:  member.Device,
+				},
+			},
+		},
+	}
+
+	if opaqueConfig != nil {
+		allocationResult.Devices.Config = []resourceapi.DeviceAllocationConfiguration{
+			{
+				Source: resourceapi.AllocationConfigSourceClaim,
+				Requests: []string{requestName},
+				DeviceConfiguration: resourceapi.DeviceConfiguration{
+					Opaque: &resourceapi.OpaqueDeviceConfiguration{
+						Driver:     member.Driver,
+						Parameters: runtime.RawExtension{Raw: opaqueConfig},
+					},
+				},
+			},
+		}
+	}
+
+	shadowClaim := &resourceapi.ResourceClaim{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      shadowName,
+			Namespace: compositeClaim.Namespace,
+			Labels: map[string]string{
+				"app.kubernetes.io/managed-by": m.driverName,
+				"composite-claim-uid":          string(compositeClaim.UID),
+			},
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					APIVersion: "resource.k8s.io/v1",
+					Kind:       "ResourceClaim",
+					Name:       compositeClaim.Name,
+					UID:        compositeClaim.UID,
+				},
+			},
+		},
+	}
+
+	created, err := m.client.ResourceClaims(compositeClaim.Namespace).Create(ctx, shadowClaim, metav1.CreateOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("create shadow claim %s: %w", shadowName, err)
+	}
+
+	created.Status = resourceapi.ResourceClaimStatus{
+		Allocation:  &allocationResult,
+		ReservedFor: compositeClaim.Status.ReservedFor,
+	}
+
+	updated, err := m.client.ResourceClaims(compositeClaim.Namespace).UpdateStatus(ctx, created, metav1.UpdateOptions{})
+	if err != nil {
+		_ = m.client.ResourceClaims(compositeClaim.Namespace).Delete(ctx, shadowName, metav1.DeleteOptions{})
+		return nil, fmt.Errorf("update shadow claim status %s: %w", shadowName, err)
+	}
+
+	klog.V(2).Infof("shadow: created %s/%s (uid=%s) for %s device %s/%s",
+		updated.Namespace, updated.Name, updated.UID,
+		member.Driver, member.Pool, member.Device)
+
+	return &ShadowClaimInfo{
+		Namespace: updated.Namespace,
+		Name:      updated.Name,
+		UID:       string(updated.UID),
+	}, nil
+}
+
+// Delete removes a shadow ResourceClaim.
+func (m *ClaimManager) Delete(ctx context.Context, namespace, name string) error {
+	err := m.client.ResourceClaims(namespace).Delete(ctx, name, metav1.DeleteOptions{})
+	if err != nil {
+		return fmt.Errorf("delete shadow claim %s/%s: %w", namespace, name, err)
+	}
+	klog.V(2).Infof("shadow: deleted %s/%s", namespace, name)
+	return nil
+}
+
+// DeleteForCompositeClaim deletes all shadow claims owned by a composite claim.
+func (m *ClaimManager) DeleteForCompositeClaim(ctx context.Context, namespace, compositeClaimUID string) error {
+	labelSelector := fmt.Sprintf("app.kubernetes.io/managed-by=%s,composite-claim-uid=%s", m.driverName, compositeClaimUID)
+	list, err := m.client.ResourceClaims(namespace).List(ctx, metav1.ListOptions{
+		LabelSelector: labelSelector,
+	})
+	if err != nil {
+		return fmt.Errorf("list shadow claims for composite %s: %w", compositeClaimUID, err)
+	}
+
+	var errs []error
+	for _, claim := range list.Items {
+		if delErr := m.Delete(ctx, namespace, claim.Name); delErr != nil {
+			errs = append(errs, delErr)
+		}
+	}
+	if len(errs) > 0 {
+		return fmt.Errorf("failed to delete %d shadow claims: %v", len(errs), errs)
+	}
+	return nil
+}

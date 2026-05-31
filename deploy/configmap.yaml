@@ -1,0 +1,56 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: composite-dra-config
+  namespace: composite-dra-system
+data:
+  config.yaml: |
+    driver:
+      name: "composite.dra.example.io"
+
+    sources:
+      - name: gpu
+        driver: "gpu.nvidia.com"
+        deviceClassName: "gpu.nvidia.com"
+        forwardAttributes:
+          - domain: "resource.kubernetes.io"
+            attributes: ["pciBusID", "pcieRoot"]
+          - domain: "gpu.nvidia.com"
+            attributes: ["model", "memory"]
+
+      - name: nic
+        driver: "dra.net"
+        deviceClassName: "dranet"
+        forwardAttributes:
+          - domain: "dra.net"
+            attributes: ["ifName", "pciAddress", "numaNode", "rdma", "encapsulation", "ipv4", "mac"]
+          - domain: "resource.kubernetes.io"
+            attributes: ["pcieRoot"]
+
+    compositions:
+      - name: "gpu-nic-pair"
+        members:
+          - source: gpu
+            count: 1
+          - source: nic
+            count: 1
+        constraints:
+          - type: matchAttribute
+            attribute: "resource.kubernetes.io/pcieRoot"
+        filters:
+          nic:
+            cel: 'device.attributes["dra.net"].rdma == true'
+        pairingMode: "auto"
+        transportMode: "auto"
+
+    railConfig:
+      interfacePrefix: "net"
+      startingTableID: 100
+      rails:
+        - selector:
+            cel: 'device.attributes["dra.net"].ipv4.startsWith("10.0.0.")'
+          config:
+            subnet: "10.0.0.0/16"
+            gateway: "10.0.0.1"
+            mtu: 9000
+            tableID: 100

@@ -1,0 +1,88 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: composite-dra-driver
+  namespace: composite-dra-system
+  labels:
+    app.kubernetes.io/name: composite-dra-driver
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: composite-dra-driver
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: composite-dra-driver
+    spec:
+      serviceAccountName: composite-dra-driver
+      priorityClassName: system-node-critical
+      # Run on ALL nodes including control-plane/master
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+        - key: node-role.kubernetes.io/master
+          operator: Exists
+          effect: NoSchedule
+        - key: node.kubernetes.io/not-ready
+          operator: Exists
+          effect: NoExecute
+          tolerationSeconds: 300
+        - key: node.kubernetes.io/unreachable
+          operator: Exists
+          effect: NoExecute
+          tolerationSeconds: 300
+      containers:
+        - name: driver
+          image: ghcr.io/openshift-psap/composite-dra-driver:latest
+          args:
+            - --config=/etc/composite-dra/config.yaml
+            - --state-dir=/var/lib/composite-dra
+            - --v=2
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: kubelet-plugins
+              mountPath: /var/lib/kubelet/plugins
+            - name: kubelet-registry
+              mountPath: /var/lib/kubelet/plugins_registry
+            - name: state
+              mountPath: /var/lib/composite-dra
+            - name: config
+              mountPath: /etc/composite-dra
+              readOnly: true
+      volumes:
+        - name: kubelet-plugins
+          hostPath:
+            path: /var/lib/kubelet/plugins
+            type: DirectoryOrCreate
+        - name: kubelet-registry
+          hostPath:
+            path: /var/lib/kubelet/plugins_registry
+            type: DirectoryOrCreate
+        - name: state
+          hostPath:
+            path: /var/lib/composite-dra
+            type: DirectoryOrCreate
+        - name: config
+          configMap:
+            name: composite-dra-config

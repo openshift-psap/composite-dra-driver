@@ -1,0 +1,327 @@
+package synthesizer
+
+import (
+	"fmt"
+	"sort"
+	"strings"
+
+	resourceapi "k8s.io/api/resource/v1"
+
+	"github.com/openshift-psap/composite-dra-driver/pkg/config"
+	"github.com/openshift-psap/composite-dra-driver/pkg/store"
+)
+
+// SourceDevice is a device from an underlying driver's ResourceSlice.
+type SourceDevice struct {
+	SourceName string
+	Driver     string
+	Pool       string
+	DeviceName string
+	DeviceClassName string
+	Attributes map[string]resourceapi.DeviceAttribute
+}
+
+// CompositeDevice is a generated composite device ready for publishing.
+type CompositeDevice struct {
+	Name       string
+	Attributes map[string]resourceapi.DeviceAttribute
+	Mapping    *store.DeviceMapping
+}
+
+// Pairer computes valid device groupings from source devices according to composition rules.
+type Pairer struct {
+	sources      map[string]*config.SourceConfig
+	compositions []config.CompositionConfig
+}
+
+func NewPairer(sources []config.SourceConfig, compositions []config.CompositionConfig) *Pairer {
+	srcMap := make(map[string]*config.SourceConfig, len(sources))
+	for i := range sources {
+		srcMap[sources[i].Name] = &sources[i]
+	}
+	return &Pairer{
+		sources:      srcMap,
+		compositions: compositions,
+	}
+}
+
+// ComputePairs takes all source devices on a node and returns valid composite devices.
+func (p *Pairer) ComputePairs(devicesBySource map[string][]SourceDevice) []CompositeDevice {
+	var result []CompositeDevice
+	for _, comp := range p.compositions {
+		pairs := p.computeForComposition(comp, devicesBySource)
+		result = append(result, pairs...)
+	}
+	return result
+}
+
+func (p *Pairer) computeForComposition(comp config.CompositionConfig, devicesBySource map[string][]SourceDevice) []CompositeDevice {
+	filtered := make(map[string][]SourceDevice)
+	for _, member := range comp.Members {
+		devices := devicesBySource[member.Source]
+		if f, ok := comp.Filters[member.Source]; ok {
+			devices = applyFilter(devices, f)
+		}
+		filtered[member.Source] = devices
+	}
+
+	if len(comp.Constraints) == 0 {
+		return p.pairWithoutConstraints(comp, filtered)
+	}
+
+	return p.pairWithMatchAttribute(comp, filtered)
+}
+
+// pairWithMatchAttribute groups devices by shared constraint attribute values,
+// then generates combinations within each group.
+func (p *Pairer) pairWithMatchAttribute(comp config.CompositionConfig, devicesBySource map[string][]SourceDevice) []CompositeDevice {
+	constraint := comp.Constraints[0]
+
+	type groupKey struct {
+		sourceName string
+		attrValue  string
+	}
+
+	groups := make(map[string]map[string][]SourceDevice)
+
+	for _, member := range comp.Members {
+		for _, dev := range devicesBySource[member.Source] {
+			val, ok := getAttributeString(dev.Attributes, constraint.Attribute)
+			if !ok {
+				continue
+			}
+			if groups[val] == nil {
+				groups[val] = make(map[string][]SourceDevice)
+			}
+			groups[val][member.Source] = append(groups[val][member.Source], dev)
+		}
+	}
+
+	var result []CompositeDevice
+	for _, sourcesInGroup := range groups {
+		allPresent := true
+		for _, member := range comp.Members {
+			if len(sourcesInGroup[member.Source]) < member.Count {
+				allPresent = false
+				break
+			}
+		}
+		if !allPresent {
+			continue
+		}
+
+		combos := generateCombinations(comp.Members, sourcesInGroup)
+		for _, combo := range combos {
+			cd := p.buildCompositeDevice(comp, combo)
+			result = append(result, cd)
+		}
+	}
+
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].Name < result[j].Name
+	})
+
+	return result
+}
+
+func (p *Pairer) pairWithoutConstraints(comp config.CompositionConfig, devicesBySource map[string][]SourceDevice) []CompositeDevice {
+	combos := generateCombinations(comp.Members, devicesBySource)
+	var result []CompositeDevice
+	for _, combo := range combos {
+		cd := p.buildCompositeDevice(comp, combo)
+		result = append(result, cd)
+	}
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].Name < result[j].Name
+	})
+	return result
+}
+
+// generateCombinations produces all valid device selections respecting member counts.
+// Each combo maps source name → selected devices.
+func generateCombinations(members []config.MemberConfig, available map[string][]SourceDevice) []map[string][]SourceDevice {
+	if len(members) == 0 {
+		return []map[string][]SourceDevice{{}}
+	}
+
+	member := members[0]
+	rest := members[1:]
+	avail := available[member.Source]
+
+	if len(avail) < member.Count {
+		return nil
+	}
+
+	var results []map[string][]SourceDevice
+	indices := chooseCombinations(len(avail), member.Count)
+	for _, idxSet := range indices {
+		selected := make([]SourceDevice, len(idxSet))
+		for i, idx := range idxSet {
+			selected[i] = avail[idx]
+		}
+		subCombos := generateCombinations(rest, available)
+		for _, sub := range subCombos {
+			combo := make(map[string][]SourceDevice, len(sub)+1)
+			for k, v := range sub {
+				combo[k] = v
+			}
+			combo[member.Source] = selected
+			results = append(results, combo)
+		}
+	}
+	return results
+}
+
+// chooseCombinations returns all C(n, k) index combinations.
+func chooseCombinations(n, k int) [][]int {
+	if k > n || k <= 0 {
+		return nil
+	}
+	if k == 1 {
+		result := make([][]int, n)
+		for i := 0; i < n; i++ {
+			result[i] = []int{i}
+		}
+		return result
+	}
+
+	var results [][]int
+	combo := make([]int, k)
+	var generate func(start, depth int)
+	generate = func(start, depth int) {
+		if depth == k {
+			c := make([]int, k)
+			copy(c, combo)
+			results = append(results, c)
+			return
+		}
+		for i := start; i <= n-(k-depth); i++ {
+			combo[depth] = i
+			generate(i+1, depth+1)
+		}
+	}
+	generate(0, 0)
+	return results
+}
+
+func (p *Pairer) buildCompositeDevice(comp config.CompositionConfig, combo map[string][]SourceDevice) CompositeDevice {
+	attrs := make(map[string]resourceapi.DeviceAttribute)
+	var members []store.DeviceMember
+	var nameParts []string
+
+	for _, memberCfg := range comp.Members {
+		src := p.sources[memberCfg.Source]
+		for i, dev := range combo[memberCfg.Source] {
+			suffix := ""
+			if memberCfg.Count > 1 {
+				suffix = fmt.Sprintf("-%d", i)
+			}
+			prefix := fmt.Sprintf("%s%s", src.Name, suffix)
+
+			for _, ag := range src.ForwardAttributes {
+				for _, attrName := range ag.Attributes {
+					fullKey := qualifiedAttrName(ag.Domain, attrName)
+					if val, ok := dev.Attributes[fullKey]; ok {
+						compositeKey := fmt.Sprintf("%s/%s", prefix, attrName)
+						attrs[compositeKey] = val
+					}
+				}
+			}
+
+			nameParts = append(nameParts, sanitizeName(dev.DeviceName))
+
+			members = append(members, store.DeviceMember{
+				SourceName:     src.Name,
+				Driver:         src.Driver,
+				Pool:           dev.Pool,
+				Device:         dev.DeviceName,
+				DeviceClassName: src.DeviceClassName,
+				Attributes:     dev.Attributes,
+			})
+		}
+	}
+
+	for _, c := range comp.Constraints {
+		if c.Type == "matchAttribute" {
+			if first := combo[comp.Members[0].Source]; len(first) > 0 {
+				if val, ok := first[0].Attributes[c.Attribute]; ok {
+					attrs[c.Attribute] = val
+				}
+			}
+		}
+	}
+
+	numaNode := detectNUMANode(combo)
+	if numaNode >= 0 {
+		intVal := int64(numaNode)
+		attrs["composite/numaNode"] = resourceapi.DeviceAttribute{IntValue: &intVal}
+	}
+
+	name := strings.Join(nameParts, "--")
+	if len(name) > 63 {
+		name = name[:63]
+	}
+
+	return CompositeDevice{
+		Name:       name,
+		Attributes: attrs,
+		Mapping: &store.DeviceMapping{
+			CompositionName: comp.Name,
+			Members:         members,
+			NUMANode:        numaNode,
+		},
+	}
+}
+
+func detectNUMANode(combo map[string][]SourceDevice) int {
+	for _, devs := range combo {
+		for _, dev := range devs {
+			for key, attr := range dev.Attributes {
+				if strings.HasSuffix(key, "numaNode") && attr.IntValue != nil {
+					return int(*attr.IntValue)
+				}
+			}
+		}
+	}
+	return -1
+}
+
+func getAttributeString(attrs map[string]resourceapi.DeviceAttribute, fullKey string) (string, bool) {
+	attr, ok := attrs[fullKey]
+	if !ok {
+		return "", false
+	}
+	if attr.StringValue != nil {
+		return *attr.StringValue, true
+	}
+	if attr.IntValue != nil {
+		return fmt.Sprintf("%d", *attr.IntValue), true
+	}
+	if attr.BoolValue != nil {
+		return fmt.Sprintf("%t", *attr.BoolValue), true
+	}
+	return "", false
+}
+
+func qualifiedAttrName(domain, name string) string {
+	if domain == "" {
+		return name
+	}
+	return fmt.Sprintf("%s/%s", domain, name)
+}
+
+func sanitizeName(s string) string {
+	s = strings.ReplaceAll(s, ":", "-")
+	s = strings.ReplaceAll(s, "/", "-")
+	s = strings.ReplaceAll(s, ".", "-")
+	return strings.ToLower(s)
+}
+
+func applyFilter(devices []SourceDevice, f config.FilterConfig) []SourceDevice {
+	if f.CEL == "" {
+		return devices
+	}
+	// TODO: implement CEL evaluation in Phase 2
+	// For now, pass all devices through
+	return devices
+}
