@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	resourceapi "k8s.io/api/resource/v1"
+	"k8s.io/klog/v2"
 
 	"github.com/openshift-psap/composite-dra-driver/pkg/config"
 	"github.com/openshift-psap/composite-dra-driver/pkg/store"
@@ -32,6 +33,7 @@ type CompositeDevice struct {
 type Pairer struct {
 	sources      map[string]*config.SourceConfig
 	compositions []config.CompositionConfig
+	celFilter    *CELFilter
 }
 
 func NewPairer(sources []config.SourceConfig, compositions []config.CompositionConfig) *Pairer {
@@ -39,9 +41,14 @@ func NewPairer(sources []config.SourceConfig, compositions []config.CompositionC
 	for i := range sources {
 		srcMap[sources[i].Name] = &sources[i]
 	}
+	celFilter, err := NewCELFilter()
+	if err != nil {
+		klog.Errorf("pairer: CEL filter init failed, filters disabled: %v", err)
+	}
 	return &Pairer{
 		sources:      srcMap,
 		compositions: compositions,
+		celFilter:    celFilter,
 	}
 }
 
@@ -60,7 +67,7 @@ func (p *Pairer) computeForComposition(comp config.CompositionConfig, devicesByS
 	for _, member := range comp.Members {
 		devices := devicesBySource[member.Source]
 		if f, ok := comp.Filters[member.Source]; ok {
-			devices = applyFilter(devices, f)
+			devices = p.applyFilter(devices, f)
 		}
 		filtered[member.Source] = devices
 	}
@@ -317,11 +324,16 @@ func sanitizeName(s string) string {
 	return strings.ToLower(s)
 }
 
-func applyFilter(devices []SourceDevice, f config.FilterConfig) []SourceDevice {
-	if f.CEL == "" {
+func (p *Pairer) applyFilter(devices []SourceDevice, f config.FilterConfig) []SourceDevice {
+	if f.CEL == "" || p.celFilter == nil {
 		return devices
 	}
-	// TODO: implement CEL evaluation in Phase 2
-	// For now, pass all devices through
-	return devices
+	var filtered []SourceDevice
+	for _, dev := range devices {
+		if p.celFilter.Match(f.CEL, dev.Attributes) {
+			filtered = append(filtered, dev)
+		}
+	}
+	klog.V(2).Infof("pairer: CEL filter %q: %d/%d devices passed", f.CEL, len(filtered), len(devices))
+	return filtered
 }

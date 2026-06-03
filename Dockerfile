@@ -5,8 +5,14 @@ COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -o /composite-dra-driver ./cmd/driver
+RUN CGO_ENABLED=0 GOOS=linux go build -o /composite-dra-webhook ./cmd/webhook
 
-FROM gcr.io/distroless/static:nonroot
+FROM gcr.io/distroless/static:nonroot AS driver
 COPY --from=builder /composite-dra-driver /composite-dra-driver
 USER 65532:65532
 ENTRYPOINT ["/composite-dra-driver"]
+
+FROM gcr.io/distroless/static:nonroot AS webhook
+COPY --from=builder /composite-dra-webhook /composite-dra-webhook
+USER 65532:65532
+ENTRYPOINT ["/composite-dra-webhook"]

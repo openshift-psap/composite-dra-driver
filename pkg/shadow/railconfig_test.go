@@ -46,7 +46,7 @@ func TestRailConfigResolver_MatchesRail0(t *testing.T) {
 		"dra.net/ipv4": strAttr("10.0.0.42"),
 	}
 
-	data, railIdx := r.ResolveForDevice(attrs)
+	data, railIdx := r.ResolveForDevice(attrs, 0)
 	if data == nil {
 		t.Fatal("expected config, got nil")
 	}
@@ -84,7 +84,7 @@ func TestRailConfigResolver_MatchesRail1(t *testing.T) {
 		"dra.net/ipv4": strAttr("10.0.1.7"),
 	}
 
-	data, railIdx := r.ResolveForDevice(attrs)
+	data, railIdx := r.ResolveForDevice(attrs, 3)
 	if data == nil {
 		t.Fatal("expected config, got nil")
 	}
@@ -94,8 +94,8 @@ func TestRailConfigResolver_MatchesRail1(t *testing.T) {
 
 	var params NICParams
 	json.Unmarshal(data, &params)
-	if params.Interface.Name != "net1" {
-		t.Errorf("interface name = %s, want net1", params.Interface.Name)
+	if params.Interface.Name != "net3" {
+		t.Errorf("interface name = %s, want net3 (ordinal 3)", params.Interface.Name)
 	}
 	if params.Routes[1].Gateway != "10.0.1.1" {
 		t.Errorf("gateway = %s, want 10.0.1.1", params.Routes[1].Gateway)
@@ -108,7 +108,7 @@ func TestRailConfigResolver_NoMatch(t *testing.T) {
 		"dra.net/ipv4": strAttr("192.168.1.5"),
 	}
 
-	data, railIdx := r.ResolveForDevice(attrs)
+	data, railIdx := r.ResolveForDevice(attrs, 0)
 	if data != nil {
 		t.Fatalf("expected nil for non-matching IP, got %d bytes", len(data))
 	}
@@ -121,7 +121,7 @@ func TestRailConfigResolver_NilConfig(t *testing.T) {
 	r := NewRailConfigResolver(nil)
 	data, railIdx := r.ResolveForDevice(map[string]resourceapi.DeviceAttribute{
 		"dra.net/ipv4": strAttr("10.0.0.1"),
-	})
+	}, 0)
 	if data != nil {
 		t.Fatal("expected nil for nil config")
 	}

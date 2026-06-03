@@ -98,6 +98,7 @@ func (p *CompositePlugin) prepareClaim(
 
 	var allDevices []kubeletplugin.Device
 	var shadows []shadowRecord
+	pairOrdinal := 0
 
 	for _, allocResult := range claim.Status.Allocation.Devices.Results {
 		if allocResult.Driver != p.driverName {
@@ -114,7 +115,7 @@ func (p *CompositePlugin) prepareClaim(
 		for _, member := range mapping.Members {
 			var opaqueConfig []byte
 			if p.railResolver != nil {
-				opaqueConfig, _ = p.railResolver.ResolveForDevice(member.Attributes)
+				opaqueConfig, _ = p.railResolver.ResolveForDevice(member.Attributes, pairOrdinal)
 			}
 
 			shadowInfo, err := p.claimMgr.Create(ctx, claim, &member, allocResult.Request, opaqueConfig)
@@ -141,6 +142,7 @@ func (p *CompositePlugin) prepareClaim(
 			DeviceName:   allocResult.Device,
 			CDIDeviceIDs: cdiDeviceIDs,
 		})
+		pairOrdinal++
 	}
 
 	p.mu.Lock()

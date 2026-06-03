@@ -48,9 +48,11 @@ func NewRailConfigResolver(cfg *config.RailConfig) *RailConfigResolver {
 	return &RailConfigResolver{cfg: cfg}
 }
 
-// ResolveForDevice returns the opaque config JSON for a NIC device based on its attributes,
-// or nil if no rail config is defined or no rail matches.
-func (r *RailConfigResolver) ResolveForDevice(attrs map[string]resourceapi.DeviceAttribute) ([]byte, int) {
+// ResolveForDevice returns the opaque config JSON for a NIC device based on its attributes.
+// pairOrdinal is the pair's index within the pod (0, 1, 2, ...) — used for interface naming
+// to avoid collisions when multiple pairs land on the same rail.
+// Returns nil if no rail config is defined or no rail matches.
+func (r *RailConfigResolver) ResolveForDevice(attrs map[string]resourceapi.DeviceAttribute, pairOrdinal int) ([]byte, int) {
 	if r.cfg == nil || len(r.cfg.Rails) == 0 {
 		return nil, -1
 	}
@@ -59,7 +61,7 @@ func (r *RailConfigResolver) ResolveForDevice(attrs map[string]resourceapi.Devic
 		if matchesRailSelector(attrs, rail.Selector) {
 			params := NICParams{
 				Interface: InterfaceConfig{
-					Name: fmt.Sprintf("%s%d", r.cfg.InterfacePrefix, i),
+					Name: fmt.Sprintf("%s%d", r.cfg.InterfacePrefix, pairOrdinal),
 					MTU:  rail.Config.MTU,
 				},
 				Routes: []Route{
