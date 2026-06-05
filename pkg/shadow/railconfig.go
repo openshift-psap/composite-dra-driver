@@ -64,7 +64,7 @@ func (r *RailConfigResolver) ResolveForDevice(attrs map[string]resourceapi.Devic
 					Name: fmt.Sprintf("%s%d", r.cfg.InterfacePrefix, pairOrdinal),
 					MTU:  rail.Config.MTU,
 				},
-				Routes: buildRoutes(rail.Config, r.cfg.CrossRailCIDR),
+				Routes: r.buildRoutes(i, rail.Config),
 				Rules: []Rule{
 					{
 						Source:   rail.Config.Subnet,
@@ -108,7 +108,11 @@ func matchesRailSelector(attrs map[string]resourceapi.DeviceAttribute, selector 
 	return false
 }
 
-func buildRoutes(cfg config.RailParameters, crossRailCIDR string) []Route {
+// buildRoutes generates routes matching the original webhook pattern:
+// - Per-rail subnet in policy table (scope link)
+// - Cross-rail subnets in MAIN table (no table field) via this rail's gateway
+// - Default route in policy table
+func (r *RailConfigResolver) buildRoutes(currentRailIdx int, cfg config.RailParameters) []Route {
 	routes := []Route{
 		{
 			Destination: cfg.Subnet,
@@ -116,13 +120,17 @@ func buildRoutes(cfg config.RailParameters, crossRailCIDR string) []Route {
 			Table:       cfg.TableID,
 		},
 	}
-	if crossRailCIDR != "" {
+
+	for j, otherRail := range r.cfg.Rails {
+		if j == currentRailIdx {
+			continue
+		}
 		routes = append(routes, Route{
-			Destination: crossRailCIDR,
+			Destination: otherRail.Config.Subnet,
 			Gateway:     cfg.Gateway,
-			Table:       cfg.TableID,
 		})
 	}
+
 	routes = append(routes, Route{
 		Destination: "0.0.0.0/0",
 		Gateway:     cfg.Gateway,

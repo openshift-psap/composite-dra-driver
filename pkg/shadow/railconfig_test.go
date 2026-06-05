@@ -64,14 +64,18 @@ func TestRailConfigResolver_MatchesRail0(t *testing.T) {
 	if params.Interface.MTU != 9000 {
 		t.Errorf("mtu = %d, want 9000", params.Interface.MTU)
 	}
-	if len(params.Routes) != 2 {
-		t.Fatalf("expected 2 routes, got %d", len(params.Routes))
+	// 3 routes: per-rail (table 100), cross-rail to rail 1 (main table), default (table 100)
+	if len(params.Routes) != 3 {
+		t.Fatalf("expected 3 routes, got %d", len(params.Routes))
 	}
 	if params.Routes[0].Table != 100 {
-		t.Errorf("route table = %d, want 100", params.Routes[0].Table)
+		t.Errorf("route[0] table = %d, want 100 (per-rail)", params.Routes[0].Table)
 	}
-	if params.Routes[1].Gateway != "10.0.0.1" {
-		t.Errorf("gateway = %s, want 10.0.0.1", params.Routes[1].Gateway)
+	if params.Routes[1].Destination != "10.0.1.0/16" || params.Routes[1].Table != 0 {
+		t.Errorf("route[1] = %+v, want cross-rail to 10.0.1.0/16 in main table", params.Routes[1])
+	}
+	if params.Routes[2].Gateway != "10.0.0.1" || params.Routes[2].Table != 100 {
+		t.Errorf("route[2] = %+v, want default via 10.0.0.1 in table 100", params.Routes[2])
 	}
 	if len(params.Rules) != 1 || params.Rules[0].Table != 100 {
 		t.Errorf("unexpected rules: %+v", params.Rules)
