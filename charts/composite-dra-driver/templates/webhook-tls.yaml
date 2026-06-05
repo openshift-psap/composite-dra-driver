@@ -1,0 +1,18 @@
+{{- if and .Values.webhook.enabled (eq .Values.webhook.tls.mode "cert-manager") }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ include "composite-dra.fullname" . }}-webhook-tls
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "composite-dra.labels" . | nindent 4 }}
+spec:
+  secretName: {{ include "composite-dra.fullname" . }}-webhook-tls
+  dnsNames:
+    - {{ include "composite-dra.fullname" . }}-webhook
+    - {{ include "composite-dra.fullname" . }}-webhook.{{ .Values.namespace }}
+    - {{ include "composite-dra.fullname" . }}-webhook.{{ .Values.namespace }}.svc
+    - {{ include "composite-dra.fullname" . }}-webhook.{{ .Values.namespace }}.svc.cluster.local
+  issuerRef:
+    {{- toYaml .Values.webhook.tls.certManager.issuerRef | nindent 4 }}
+{{- end }}

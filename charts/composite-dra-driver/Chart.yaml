@@ -1,0 +1,6 @@
+apiVersion: v2
+name: composite-dra-driver
+description: Generic composite DRA driver with optional NUMA-aware webhook
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

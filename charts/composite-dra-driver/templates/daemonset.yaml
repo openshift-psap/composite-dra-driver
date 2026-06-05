@@ -1,0 +1,91 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ include "composite-dra.fullname" . }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "composite-dra.labels" . | nindent 4 }}
+    app.kubernetes.io/component: driver
+spec:
+  selector:
+    matchLabels:
+      {{- include "composite-dra.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: driver
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        {{- include "composite-dra.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: driver
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    spec:
+      serviceAccountName: {{ include "composite-dra.fullname" . }}
+      priorityClassName: system-node-critical
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+        - key: node-role.kubernetes.io/master
+          operator: Exists
+          effect: NoSchedule
+        - key: node.kubernetes.io/not-ready
+          operator: Exists
+          effect: NoExecute
+          tolerationSeconds: 300
+        - key: node.kubernetes.io/unreachable
+          operator: Exists
+          effect: NoExecute
+          tolerationSeconds: 300
+      containers:
+        - name: driver
+          image: "{{ .Values.driver.image.repository }}:{{ .Values.driver.image.tag }}"
+          imagePullPolicy: {{ .Values.driver.image.pullPolicy }}
+          args:
+            - --config=/etc/composite-dra/config.yaml
+            - --state-dir={{ .Values.driver.stateDir }}
+            - --plugin-dir={{ .Values.driver.pluginDir }}
+            - --v={{ .Values.driver.verbosity }}
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          resources:
+            {{- toYaml .Values.driver.resources | nindent 12 }}
+          securityContext:
+            privileged: true
+            runAsUser: 0
+          volumeMounts:
+            - name: kubelet-plugins
+              mountPath: {{ .Values.driver.pluginDir }}
+            - name: kubelet-registry
+              mountPath: /var/lib/kubelet/plugins_registry
+            - name: state
+              mountPath: {{ .Values.driver.stateDir }}
+            - name: config
+              mountPath: /etc/composite-dra
+              readOnly: true
+      volumes:
+        - name: kubelet-plugins
+          hostPath:
+            path: {{ .Values.driver.pluginDir }}
+            type: DirectoryOrCreate
+        - name: kubelet-registry
+          hostPath:
+            path: /var/lib/kubelet/plugins_registry
+            type: DirectoryOrCreate
+        - name: state
+          hostPath:
+            path: {{ .Values.driver.stateDir }}
+            type: DirectoryOrCreate
+        - name: config
+          configMap:
+            name: composite-dra-config

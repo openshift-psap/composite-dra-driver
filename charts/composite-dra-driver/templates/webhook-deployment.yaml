@@ -1,0 +1,75 @@
+{{- if .Values.webhook.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "composite-dra.fullname" . }}-webhook
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "composite-dra.labels" . | nindent 4 }}
+    app.kubernetes.io/component: webhook
+spec:
+  replicas: {{ .Values.webhook.replicas }}
+  selector:
+    matchLabels:
+      {{- include "composite-dra.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: webhook
+  template:
+    metadata:
+      labels:
+        {{- include "composite-dra.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: webhook
+    spec:
+      serviceAccountName: {{ include "composite-dra.fullname" . }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: webhook
+          image: "{{ .Values.webhook.image.repository }}:{{ .Values.webhook.image.tag }}"
+          imagePullPolicy: {{ .Values.webhook.image.pullPolicy }}
+          args:
+            - --port={{ .Values.webhook.port }}
+            - --tls-cert=/etc/webhook/certs/tls.crt
+            - --tls-key=/etc/webhook/certs/tls.key
+            - --device-class={{ .Values.webhook.deviceClassName }}
+            - --numa-attribute={{ .Values.webhook.numaAttribute }}
+          ports:
+            - containerPort: {{ .Values.webhook.port }}
+              name: https
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: https
+              scheme: HTTPS
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.webhook.resources | nindent 12 }}
+          volumeMounts:
+            - name: tls-certs
+              mountPath: /etc/webhook/certs
+              readOnly: true
+      volumes:
+        - name: tls-certs
+          secret:
+            secretName: {{ include "composite-dra.fullname" . }}-webhook-tls
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "composite-dra.fullname" . }}-webhook
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "composite-dra.labels" . | nindent 4 }}
+    app.kubernetes.io/component: webhook
+spec:
+  ports:
+    - port: 443
+      targetPort: https
+      protocol: TCP
+  selector:
+    {{- include "composite-dra.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: webhook
+{{- end }}

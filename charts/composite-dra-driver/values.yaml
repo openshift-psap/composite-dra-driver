@@ -1,0 +1,110 @@
+namespace: composite-dra-system
+
+driver:
+  name: "composite.dra.example.io"
+  image:
+    repository: ghcr.io/thameem-abbas/composite-dra-driver
+    tag: latest
+    pullPolicy: Always
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+  stateDir: /var/lib/composite-dra
+  pluginDir: /var/lib/kubelet/plugins
+  verbosity: 2
+
+webhook:
+  enabled: false
+  image:
+    repository: ghcr.io/thameem-abbas/composite-dra-webhook
+    tag: latest
+    pullPolicy: Always
+  replicas: 2
+  port: 8443
+  deviceClassName: composite-gpu-nic
+  numaAttribute: "composite/numaNode"
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 64Mi
+  namespaceSelector:
+    matchLabels:
+      composite.dra/webhook-enabled: "true"
+  failurePolicy: Fail
+  tls:
+    mode: cert-manager  # cert-manager | helm-generated
+    certManager:
+      issuerRef:
+        name: ""
+        kind: Issuer
+        group: cert-manager.io
+
+imagePullSecrets:
+  - name: ghcr-pull
+
+deviceClass:
+  name: composite-gpu-nic
+  selector: 'device.driver == "composite.dra.example.io"'
+  # K8s 1.35+ only:
+  # extendedResourceName: "composite.dra.example.io/gpu-nic-pair"
+
+sources:
+  - name: gpu
+    driver: "gpu.nvidia.com"
+    deviceClassName: "gpu.nvidia.com"
+    forwardAttributes:
+      - domain: "resource.kubernetes.io"
+        attributes: ["pciBusID", "pcieRoot"]
+      - domain: "gpu.nvidia.com"
+        attributes: ["model", "memory"]
+  - name: nic
+    driver: "dra.net"
+    deviceClassName: "dranet"
+    forwardAttributes:
+      - domain: "dra.net"
+        attributes: ["ifName", "pciAddress", "numaNode", "rdma", "encapsulation", "ipv4", "mac"]
+      - domain: "resource.kubernetes.io"
+        attributes: ["pcieRoot"]
+
+compositions:
+  - name: "gpu-nic-pair"
+    members:
+      - source: gpu
+        count: 1
+      - source: nic
+        count: 1
+    constraints:
+      - type: matchAttribute
+        attribute: "resource.kubernetes.io/pcieRoot"
+    filters:
+      nic:
+        cel: 'device.attributes["dra.net"].rdma == true'
+    pairingMode: "auto"
+    transportMode: "ethernet"
+
+railConfig:
+  interfacePrefix: "net"
+  startingTableID: 100
+  crossRailCIDR: ""
+  rails: []
+  # Example:
+  # crossRailCIDR: "10.0.0.0/13"
+  # rails:
+  #   - selector:
+  #       cel: 'device.attributes["dra.net"].ipv4.startsWith("10.0.")'
+  #     config:
+  #       subnet: "10.0.0.0/16"
+  #       gateway: "10.0.0.1"
+  #       mtu: 9000
+  #       tableID: 100
+
+openshift:
+  scc:
+    enabled: false
