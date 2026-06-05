@@ -46,6 +46,7 @@ data:
     railConfig:
       interfacePrefix: "net"
       startingTableID: 100
+      crossRailCIDR: "10.0.0.0/13"
       rails:
         - selector:
             cel: 'device.attributes["dra.net"].ipv4.startsWith("10.0.")'

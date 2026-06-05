@@ -64,18 +64,7 @@ func (r *RailConfigResolver) ResolveForDevice(attrs map[string]resourceapi.Devic
 					Name: fmt.Sprintf("%s%d", r.cfg.InterfacePrefix, pairOrdinal),
 					MTU:  rail.Config.MTU,
 				},
-				Routes: []Route{
-					{
-						Destination: rail.Config.Subnet,
-						Scope:       253,
-						Table:       rail.Config.TableID,
-					},
-					{
-						Destination: "0.0.0.0/0",
-						Gateway:     rail.Config.Gateway,
-						Table:       rail.Config.TableID,
-					},
-				},
+				Routes: buildRoutes(rail.Config, r.cfg.CrossRailCIDR),
 				Rules: []Rule{
 					{
 						Source:   rail.Config.Subnet,
@@ -117,6 +106,29 @@ func matchesRailSelector(attrs map[string]resourceapi.DeviceAttribute, selector 
 		}
 	}
 	return false
+}
+
+func buildRoutes(cfg config.RailParameters, crossRailCIDR string) []Route {
+	routes := []Route{
+		{
+			Destination: cfg.Subnet,
+			Scope:       253,
+			Table:       cfg.TableID,
+		},
+	}
+	if crossRailCIDR != "" {
+		routes = append(routes, Route{
+			Destination: crossRailCIDR,
+			Gateway:     cfg.Gateway,
+			Table:       cfg.TableID,
+		})
+	}
+	routes = append(routes, Route{
+		Destination: "0.0.0.0/0",
+		Gateway:     cfg.Gateway,
+		Table:       cfg.TableID,
+	})
+	return routes
 }
 
 func extractStartsWithPrefix(cel string) string {

@@ -55,6 +55,7 @@ type FilterConfig struct {
 type RailConfig struct {
 	InterfacePrefix string       `json:"interfacePrefix"`
 	StartingTableID int          `json:"startingTableID"`
+	CrossRailCIDR   string       `json:"crossRailCIDR,omitempty"`
 	Rails           []RailEntry  `json:"rails"`
 }
 
