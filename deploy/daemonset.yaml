@@ -36,9 +36,11 @@ spec:
           operator: Exists
           effect: NoExecute
           tolerationSeconds: 300
+      imagePullSecrets:
+        - name: ghcr-pull
       containers:
         - name: driver
-          image: ghcr.io/openshift-psap/composite-dra-driver:latest
+          image: ghcr.io/thameem-abbas/composite-dra-driver/driver:latest
           args:
             - --config=/etc/composite-dra/config.yaml
             - --state-dir=/var/lib/composite-dra

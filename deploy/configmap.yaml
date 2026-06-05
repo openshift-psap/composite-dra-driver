@@ -41,16 +41,65 @@ data:
           nic:
             cel: 'device.attributes["dra.net"].rdma == true'
         pairingMode: "auto"
-        transportMode: "auto"
+        transportMode: "ethernet"
 
     railConfig:
       interfacePrefix: "net"
       startingTableID: 100
       rails:
         - selector:
-            cel: 'device.attributes["dra.net"].ipv4.startsWith("10.0.0.")'
+            cel: 'device.attributes["dra.net"].ipv4.startsWith("10.0.")'
           config:
             subnet: "10.0.0.0/16"
             gateway: "10.0.0.1"
             mtu: 9000
             tableID: 100
+        - selector:
+            cel: 'device.attributes["dra.net"].ipv4.startsWith("10.1.")'
+          config:
+            subnet: "10.1.0.0/16"
+            gateway: "10.1.0.1"
+            mtu: 9000
+            tableID: 101
+        - selector:
+            cel: 'device.attributes["dra.net"].ipv4.startsWith("10.2.")'
+          config:
+            subnet: "10.2.0.0/16"
+            gateway: "10.2.0.1"
+            mtu: 9000
+            tableID: 102
+        - selector:
+            cel: 'device.attributes["dra.net"].ipv4.startsWith("10.3.")'
+          config:
+            subnet: "10.3.0.0/16"
+            gateway: "10.3.0.1"
+            mtu: 9000
+            tableID: 103
+        - selector:
+            cel: 'device.attributes["dra.net"].ipv4.startsWith("10.4.")'
+          config:
+            subnet: "10.4.0.0/16"
+            gateway: "10.4.0.1"
+            mtu: 9000
+            tableID: 104
+        - selector:
+            cel: 'device.attributes["dra.net"].ipv4.startsWith("10.5.")'
+          config:
+            subnet: "10.5.0.0/16"
+            gateway: "10.5.0.1"
+            mtu: 9000
+            tableID: 105
+        - selector:
+            cel: 'device.attributes["dra.net"].ipv4.startsWith("10.6.")'
+          config:
+            subnet: "10.6.0.0/16"
+            gateway: "10.6.0.1"
+            mtu: 9000
+            tableID: 106
+        - selector:
+            cel: 'device.attributes["dra.net"].ipv4.startsWith("10.7.")'
+          config:
+            subnet: "10.7.0.0/16"
+            gateway: "10.7.0.1"
+            mtu: 9000
+            tableID: 107

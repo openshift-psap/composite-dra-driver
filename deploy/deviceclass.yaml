@@ -6,25 +6,3 @@ spec:
   selectors:
     - cel:
         expression: 'device.driver == "composite.dra.example.io"'
----
-# With DRAExtendedResource feature gate (alpha 1.35, beta 1.36):
-# Users can request composite devices via standard extended resources
-# instead of creating ResourceClaims manually.
-#
-# Pod spec:
-#   containers:
-#   - resources:
-#       requests:
-#         composite.dra.example.io/gpu-nic-pair: "4"
-#
-# The scheduler automatically creates ResourceClaims from the extended
-# resource request — no webhook or ResourceClaimTemplate needed.
-apiVersion: resource.k8s.io/v1
-kind: DeviceClass
-metadata:
-  name: composite-gpu-nic-ext
-spec:
-  selectors:
-    - cel:
-        expression: 'device.driver == "composite.dra.example.io"'
-  extendedResourceName: "composite.dra.example.io/gpu-nic-pair"
