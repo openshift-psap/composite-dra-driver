@@ -2,13 +2,13 @@ apiVersion: security.openshift.io/v1
 kind: SecurityContextConstraints
 metadata:
   name: composite-dra-driver
-allowPrivilegedContainer: false
+allowPrivilegedContainer: true
 allowHostDirVolumePlugin: true
 allowHostNetwork: false
 allowHostPorts: false
 allowHostPID: false
 allowHostIPC: false
-readOnlyRootFilesystem: true
+readOnlyRootFilesystem: false
 runAsUser:
   type: RunAsAny
 seLinuxContext:

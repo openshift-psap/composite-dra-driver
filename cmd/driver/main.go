@@ -92,6 +92,11 @@ func main() {
 		stateStore,
 	)
 
+	pluginSocketDir := filepath.Join(pluginDir, cfg.Driver.Name)
+	if err := os.MkdirAll(pluginSocketDir, 0755); err != nil {
+		klog.Fatalf("create plugin socket dir %s: %v", pluginSocketDir, err)
+	}
+
 	klog.Infof("composite-dra-driver starting on node %s with driver %s", nodeName, cfg.Driver.Name)
 
 	helper, err := kubeletplugin.Start(ctx, compositePlugin,

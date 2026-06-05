@@ -59,10 +59,8 @@ spec:
               cpu: 200m
               memory: 128Mi
           securityContext:
-            readOnlyRootFilesystem: true
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop: ["ALL"]
+            privileged: true
+            runAsUser: 0
           volumeMounts:
             - name: kubelet-plugins
               mountPath: /var/lib/kubelet/plugins
