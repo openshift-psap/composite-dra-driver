@@ -95,6 +95,20 @@ func (m *ClaimManager) Create(
 				},
 			},
 		},
+		Spec: resourceapi.ResourceClaimSpec{
+			Devices: resourceapi.DeviceClaim{
+				Requests: []resourceapi.DeviceRequest{
+					{
+						Name: requestName,
+						Exactly: &resourceapi.ExactDeviceRequest{
+							DeviceClassName: member.DeviceClassName,
+							AllocationMode:  resourceapi.DeviceAllocationModeExactCount,
+							Count:           1,
+						},
+					},
+				},
+			},
+		},
 	}
 
 	created, err := m.client.ResourceClaims(compositeClaim.Namespace).Create(ctx, shadowClaim, metav1.CreateOptions{})
