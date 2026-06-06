@@ -1,0 +1,66 @@
+name: Build PR Images
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  build:
+    if: |
+      github.event.issue.pull_request &&
+      contains(github.event.comment.body, '/build-approved') &&
+      (github.event.comment.author_association == 'MEMBER' ||
+       github.event.comment.author_association == 'OWNER' ||
+       github.event.comment.author_association == 'COLLABORATOR')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      pull-requests: write
+
+    strategy:
+      matrix:
+        component: [driver, webhook]
+
+    steps:
+      - name: Get PR ref
+        id: pr
+        run: |
+          PR_NUMBER=${{ github.event.issue.number }}
+          echo "number=$PR_NUMBER" >> $GITHUB_OUTPUT
+          PR_DATA=$(gh api repos/${{ github.repository }}/pulls/$PR_NUMBER)
+          echo "ref=$(echo $PR_DATA | jq -r .head.ref)" >> $GITHUB_OUTPUT
+          echo "sha=$(echo $PR_DATA | jq -r .head.sha)" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.pr.outputs.ref }}
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          target: ${{ matrix.component }}
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/composite-dra-${{ matrix.component }}:pr-${{ steps.pr.outputs.number }}
+            ghcr.io/${{ github.repository_owner }}/composite-dra-${{ matrix.component }}:${{ steps.pr.outputs.sha }}
+
+      - name: Comment image tag
+        if: matrix.component == 'driver'
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          issue-number: ${{ steps.pr.outputs.number }}
+          body: |
+            Images built and pushed:
+            ```
+            ghcr.io/${{ github.repository_owner }}/composite-dra-driver:pr-${{ steps.pr.outputs.number }}
+            ghcr.io/${{ github.repository_owner }}/composite-dra-webhook:pr-${{ steps.pr.outputs.number }}
+            ```
