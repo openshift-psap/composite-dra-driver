@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	resourceapi "k8s.io/api/resource/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/dynamic-resource-allocation/kubeletplugin"
@@ -88,6 +89,19 @@ func (p *CompositePlugin) HandleError(ctx context.Context, err error, msg string
 	runtime.HandleErrorWithContext(ctx, err, msg)
 }
 
+// memberWork holds the inputs and outputs for one member's parallel prepare.
+type memberWork struct {
+	pairIdx     int
+	memberIdx   int
+	member      store.DeviceMember
+	allocResult resourceapi.DeviceRequestAllocationResult
+	opaqueConfig []byte
+
+	shadow   shadowRecord
+	cdiIDs   []string
+	err      error
+}
+
 func (p *CompositePlugin) prepareClaim(
 	ctx context.Context,
 	claim *resourceapi.ResourceClaim,
@@ -96,8 +110,8 @@ func (p *CompositePlugin) prepareClaim(
 		return nil, fmt.Errorf("claim %s/%s not allocated", claim.Namespace, claim.Name)
 	}
 
-	var allDevices []kubeletplugin.Device
-	var shadows []shadowRecord
+	// Collect all work items upfront
+	var work []*memberWork
 	pairOrdinal := 0
 
 	for _, allocResult := range claim.Status.Allocation.Devices.Results {
@@ -110,39 +124,98 @@ func (p *CompositePlugin) prepareClaim(
 			return nil, fmt.Errorf("unknown composite device %s/%s", allocResult.Pool, allocResult.Device)
 		}
 
-		var cdiDeviceIDs []string
-
-		for _, member := range mapping.Members {
+		for memberIdx, member := range mapping.Members {
 			var opaqueConfig []byte
 			if p.railResolver != nil {
 				opaqueConfig, _ = p.railResolver.ResolveForDevice(member.Attributes, pairOrdinal)
 			}
-
-			shadowInfo, err := p.claimMgr.Create(ctx, claim, &member, allocResult.Request, opaqueConfig)
-			if err != nil {
-				p.cleanupShadows(ctx, shadows)
-				return nil, fmt.Errorf("create shadow claim for %s: %w", member.Driver, err)
-			}
-			shadows = append(shadows, shadowRecord{driverName: member.Driver, info: shadowInfo})
-
-			resp, err := p.grpcClient.Prepare(ctx, member.Driver, shadowInfo)
-			if err != nil {
-				p.cleanupShadows(ctx, shadows)
-				return nil, fmt.Errorf("prepare %s via gRPC: %w", member.Driver, err)
-			}
-
-			for _, dev := range resp.Devices {
-				cdiDeviceIDs = append(cdiDeviceIDs, dev.CdiDeviceIds...)
-			}
+			work = append(work, &memberWork{
+				pairIdx:      pairOrdinal,
+				memberIdx:    memberIdx,
+				member:       member,
+				allocResult:  allocResult,
+				opaqueConfig: opaqueConfig,
+			})
 		}
-
-		allDevices = append(allDevices, kubeletplugin.Device{
-			Requests:     []string{allocResult.Request},
-			PoolName:     allocResult.Pool,
-			DeviceName:   allocResult.Device,
-			CDIDeviceIDs: cdiDeviceIDs,
-		})
 		pairOrdinal++
+	}
+
+	// Phase 1: Create all shadow claims in parallel
+	var wg sync.WaitGroup
+	for _, w := range work {
+		wg.Add(1)
+		go func(w *memberWork) {
+			defer wg.Done()
+			shadowInfo, err := p.claimMgr.Create(ctx, claim, &w.member, w.allocResult.Request, w.opaqueConfig)
+			if err != nil {
+				if errors.IsAlreadyExists(err) {
+					klog.V(2).Infof("plugin: shadow claim already exists for %s/%s (idempotent)", w.member.Driver, w.member.Device)
+				} else {
+					w.err = fmt.Errorf("create shadow for %s/%s: %w", w.member.Driver, w.member.Device, err)
+					return
+				}
+			}
+			w.shadow = shadowRecord{driverName: w.member.Driver, info: shadowInfo}
+		}(w)
+	}
+	wg.Wait()
+
+	// Check for creation errors
+	var shadows []shadowRecord
+	for _, w := range work {
+		if w.err != nil {
+			p.cleanupShadows(ctx, shadows)
+			return nil, w.err
+		}
+		shadows = append(shadows, w.shadow)
+	}
+
+	// Phase 2: Call gRPC prepare on all underlying drivers in parallel
+	for _, w := range work {
+		wg.Add(1)
+		go func(w *memberWork) {
+			defer wg.Done()
+			resp, err := p.grpcClient.Prepare(ctx, w.shadow.driverName, w.shadow.info)
+			if err != nil {
+				w.err = fmt.Errorf("prepare %s via gRPC: %w", w.shadow.driverName, err)
+				return
+			}
+			for _, dev := range resp.Devices {
+				w.cdiIDs = append(w.cdiIDs, dev.CdiDeviceIds...)
+			}
+		}(w)
+	}
+	wg.Wait()
+
+	// Check for prepare errors
+	for _, w := range work {
+		if w.err != nil {
+			p.cleanupShadows(ctx, shadows)
+			return nil, w.err
+		}
+	}
+
+	// Assemble results grouped by composite device
+	devicesByPair := make(map[int]*kubeletplugin.Device)
+	for _, w := range work {
+		key := w.pairIdx
+		dev, ok := devicesByPair[key]
+		if !ok {
+			dev = &kubeletplugin.Device{
+				Requests: []string{w.allocResult.Request},
+				PoolName: w.allocResult.Pool,
+				DeviceName: w.allocResult.Device,
+			}
+			devicesByPair[key] = dev
+		}
+		dev.CDIDeviceIDs = append(dev.CDIDeviceIDs, w.cdiIDs...)
+	}
+
+	var allDevices []kubeletplugin.Device
+	for i := 0; i < pairOrdinal; i++ {
+		if dev, ok := devicesByPair[i]; ok {
+			allDevices = append(allDevices, *dev)
+		}
 	}
 
 	p.mu.Lock()
