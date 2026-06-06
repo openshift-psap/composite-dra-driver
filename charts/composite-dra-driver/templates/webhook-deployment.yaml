@@ -33,7 +33,6 @@ spec:
             - --tls-cert=/etc/webhook/certs/tls.crt
             - --tls-key=/etc/webhook/certs/tls.key
             - --device-class={{ .Values.webhook.deviceClassName }}
-            - --numa-attribute={{ .Values.webhook.numaAttribute }}
           ports:
             - containerPort: {{ .Values.webhook.port }}
               name: https

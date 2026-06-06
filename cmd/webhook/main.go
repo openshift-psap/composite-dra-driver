@@ -27,7 +27,6 @@ func main() {
 		tlsKey         string
 		kubeconfig     string
 		deviceClass    string
-		numaAttribute  string
 	)
 
 	flag.IntVar(&port, "port", 8443, "webhook server port")
@@ -35,7 +34,6 @@ func main() {
 	flag.StringVar(&tlsKey, "tls-key", "/etc/webhook/certs/tls.key", "TLS key path")
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "path to kubeconfig (optional)")
 	flag.StringVar(&deviceClass, "device-class", "composite-gpu-nic", "composite DeviceClass name")
-	flag.StringVar(&numaAttribute, "numa-attribute", "composite/numaNode", "NUMA attribute for MatchAttribute constraints")
 	flag.Parse()
 
 	restConfig, err := buildRESTConfig(kubeconfig)
@@ -50,7 +48,6 @@ func main() {
 
 	mutator := webhook.NewMutator(webhook.MutatorConfig{
 		DeviceClassName: deviceClass,
-		NUMAAttribute:   numaAttribute,
 	}, kubeClient.ResourceV1())
 
 	handler := webhook.NewHandler(mutator)
@@ -81,7 +78,7 @@ func main() {
 	defer cancel()
 
 	go func() {
-		klog.Infof("webhook starting on :%d (deviceClass=%s, numaAttribute=%s)", port, deviceClass, numaAttribute)
+		klog.Infof("webhook starting on :%d (deviceClass=%s)", port, deviceClass)
 		if err := server.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
 			klog.Fatalf("server: %v", err)
 		}

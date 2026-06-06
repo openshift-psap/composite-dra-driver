@@ -26,7 +26,6 @@ webhook:
   replicas: 2
   port: 8443
   deviceClassName: composite-gpu-nic
-  numaAttribute: "composite/numaNode"
   resources:
     requests:
       cpu: 25m

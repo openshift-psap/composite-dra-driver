@@ -14,9 +14,8 @@ import (
 )
 
 const (
-	// Annotation to request composite device pairs with NUMA affinity.
-	// Value format: "<total-pairs>" or "<total-pairs>/<pairs-per-numa>"
-	// Examples: "8" (8 pairs, all on same NUMA), "8/4" (8 pairs, 4 per NUMA group)
+	// Annotation to request composite device pairs.
+	// Value: "<count>" e.g. "4" for 4 GPU-NIC pairs.
 	PairRequestAnnotation = "composite.dra/gpu-nic-pairs"
 
 	// Annotation set after mutation to prevent re-processing.
@@ -26,7 +25,6 @@ const (
 // MutatorConfig holds the webhook configuration.
 type MutatorConfig struct {
 	DeviceClassName string
-	NUMAAttribute   string
 }
 
 // Mutator generates ResourceClaimTemplates for composite devices with NUMA constraints.
@@ -46,7 +44,7 @@ func (m *Mutator) Mutate(ctx context.Context, pod *corev1.Pod, namespace string)
 		return nil, nil
 	}
 
-	pairCount, pairsPerNUMA, err := parsePairRequest(pod)
+	pairCount, err := parsePairRequest(pod)
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +52,7 @@ func (m *Mutator) Mutate(ctx context.Context, pod *corev1.Pod, namespace string)
 		return nil, nil
 	}
 
-	claimSpec := BuildClaimSpec(m.cfg.DeviceClassName, m.cfg.NUMAAttribute, pairCount, pairsPerNUMA)
+	claimSpec := BuildClaimSpec(m.cfg.DeviceClassName, pairCount)
 
 	templateName := fmt.Sprintf("%s-composite-pairs", pod.GenerateName)
 	if templateName == "-composite-pairs" {
@@ -82,47 +80,25 @@ func (m *Mutator) Mutate(ctx context.Context, pod *corev1.Pod, namespace string)
 		return nil, fmt.Errorf("create claim template: %w", err)
 	}
 
-	klog.Infof("webhook: created ResourceClaimTemplate %s/%s (%d pairs, %d per NUMA)",
-		namespace, templateName, pairCount, pairsPerNUMA)
+	klog.Infof("webhook: created ResourceClaimTemplate %s/%s (%d pairs)",
+		namespace, templateName, pairCount)
 
 	patches := buildPatches(pod, templateName, pairCount)
 	return patches, nil
 }
 
-func parsePairRequest(pod *corev1.Pod) (pairCount, pairsPerNUMA int, err error) {
+func parsePairRequest(pod *corev1.Pod) (int, error) {
 	val, ok := pod.Annotations[PairRequestAnnotation]
 	if !ok {
-		return 0, 0, nil
+		return 0, nil
 	}
 
-	// Parse "8" or "8/4"
-	var totalStr, perNUMAStr string
-	for i, c := range val {
-		if c == '/' {
-			totalStr = val[:i]
-			perNUMAStr = val[i+1:]
-			break
-		}
-	}
-	if totalStr == "" {
-		totalStr = val
-	}
-
-	pairCount, err = strconv.Atoi(totalStr)
+	pairCount, err := strconv.Atoi(val)
 	if err != nil || pairCount <= 0 {
-		return 0, 0, fmt.Errorf("invalid pair count in annotation %q: %s", PairRequestAnnotation, val)
+		return 0, fmt.Errorf("invalid pair count in annotation %q: %s", PairRequestAnnotation, val)
 	}
 
-	if perNUMAStr != "" {
-		pairsPerNUMA, err = strconv.Atoi(perNUMAStr)
-		if err != nil || pairsPerNUMA <= 0 {
-			return 0, 0, fmt.Errorf("invalid pairs-per-NUMA in annotation %q: %s", PairRequestAnnotation, val)
-		}
-	} else {
-		pairsPerNUMA = pairCount
-	}
-
-	return pairCount, pairsPerNUMA, nil
+	return pairCount, nil
 }
 
 // PatchOp is a JSON Patch operation.
