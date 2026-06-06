@@ -57,6 +57,8 @@ func main() {
 	if err != nil {
 		klog.Fatalf("build REST config: %v", err)
 	}
+	restConfig.QPS = 100
+	restConfig.Burst = 200
 
 	kubeClient, err := kubernetes.NewForConfig(restConfig)
 	if err != nil {
