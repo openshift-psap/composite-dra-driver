@@ -22,3 +22,97 @@ jobs:
 
       - name: Build
         run: go build ./...
+
+  helm-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.19.0
+
+      - name: Lint chart
+        run: helm lint charts/composite-dra-driver
+
+      - name: "Auto mode: webhook deploys on K8s <1.36"
+        run: |
+          count=$(helm template test charts/composite-dra-driver --kube-version v1.35.0 | grep -c "MutatingWebhookConfiguration")
+          [ "$count" -eq 1 ] || { echo "FAIL: expected 1 MutatingWebhookConfiguration on 1.35, got $count"; exit 1; }
+
+      - name: "Auto mode: webhook skipped on K8s >=1.36"
+        run: |
+          count=$(helm template test charts/composite-dra-driver --kube-version v1.36.0 | grep -c "MutatingWebhookConfiguration" || true)
+          [ "$count" -eq 0 ] || { echo "FAIL: expected 0 MutatingWebhookConfiguration on 1.36, got $count"; exit 1; }
+
+      - name: "Auto mode: extendedResourceName set on K8s >=1.36"
+        run: |
+          helm template test charts/composite-dra-driver --kube-version v1.36.0 | grep -q 'extendedResourceName: "composite.dra.example.io/gpu-nic-pair"' \
+            || { echo "FAIL: extendedResourceName not set on 1.36"; exit 1; }
+
+      - name: "Auto mode: no extendedResourceName on K8s <1.36"
+        run: |
+          count=$(helm template test charts/composite-dra-driver --kube-version v1.35.0 | grep -c "extendedResourceName" || true)
+          [ "$count" -eq 0 ] || { echo "FAIL: extendedResourceName should not be set on 1.35, found $count occurrences"; exit 1; }
+
+      - name: "Enabled mode: webhook deploys regardless of K8s version"
+        run: |
+          count=$(helm template test charts/composite-dra-driver --kube-version v1.36.0 --set webhook.mode=enabled | grep -c "MutatingWebhookConfiguration")
+          [ "$count" -eq 1 ] || { echo "FAIL: expected 1 MutatingWebhookConfiguration with mode=enabled on 1.36, got $count"; exit 1; }
+
+      - name: "Disabled mode: webhook never deploys"
+        run: |
+          count=$(helm template test charts/composite-dra-driver --kube-version v1.35.0 --set webhook.mode=disabled | grep -c "MutatingWebhookConfiguration" || true)
+          [ "$count" -eq 0 ] || { echo "FAIL: expected 0 MutatingWebhookConfiguration with mode=disabled, got $count"; exit 1; }
+
+      - name: "matchConditions: only intercepts pods with synthetic resource"
+        run: |
+          output=$(helm template test charts/composite-dra-driver --kube-version v1.35.0)
+          echo "$output" | grep -q "matchConditions" \
+            || { echo "FAIL: matchConditions not found in webhook config"; exit 1; }
+          echo "$output" | grep -q 'composite.dra/gpu-nic-pair' \
+            || { echo "FAIL: resourceName not found in matchConditions CEL expression"; exit 1; }
+          echo "$output" | grep -q 'has(c.resources) && has(c.resources.requests)' \
+            || { echo "FAIL: CEL expression missing null-safety checks"; exit 1; }
+          echo "$output" | grep -q 'in c.resources.requests' \
+            || { echo "FAIL: CEL expression does not check c.resources.requests"; exit 1; }
+
+      - name: "matchConditions: CEL uses configured resourceName"
+        run: |
+          output=$(helm template test charts/composite-dra-driver --kube-version v1.35.0 --set webhook.resourceName="custom.io/my-device")
+          echo "$output" | grep -q 'custom.io/my-device' \
+            || { echo "FAIL: custom resourceName not reflected in matchConditions CEL"; exit 1; }
+
+      - name: "Namespace exclusion: system namespaces excluded"
+        run: |
+          output=$(helm template test charts/composite-dra-driver --kube-version v1.35.0)
+          for ns in kube-system kube-public kube-node-lease composite-dra-system; do
+            echo "$output" | grep -q "\"$ns\"" \
+              || { echo "FAIL: $ns not found in namespace exclusion list"; exit 1; }
+          done
+
+      - name: "TLS helm-generated: produces Secret with TLS data"
+        run: |
+          output=$(helm template test charts/composite-dra-driver --kube-version v1.35.0)
+          echo "$output" | grep -q "type: kubernetes.io/tls" \
+            || { echo "FAIL: TLS Secret not found"; exit 1; }
+          echo "$output" | grep -q "tls.crt:" \
+            || { echo "FAIL: tls.crt not found in Secret"; exit 1; }
+          echo "$output" | grep -q "ca.crt:" \
+            || { echo "FAIL: ca.crt not found in Secret"; exit 1; }
+          echo "$output" | grep -q "caBundle:" \
+            || { echo "FAIL: caBundle not found in webhook config"; exit 1; }
+
+      - name: "TLS cert-manager: produces Certificate CR"
+        run: |
+          output=$(helm template test charts/composite-dra-driver --kube-version v1.35.0 --set webhook.tls.mode=cert-manager --set webhook.tls.certManager.issuerRef.name=test-issuer)
+          echo "$output" | grep -q "kind: Certificate" \
+            || { echo "FAIL: Certificate CR not found"; exit 1; }
+          echo "$output" | grep -q "cert-manager.io/inject-ca-from" \
+            || { echo "FAIL: cert-manager annotation not found"; exit 1; }
+
+      - name: "Backwards compat: old webhook.enabled key fails with clear message"
+        run: |
+          helm template test charts/composite-dra-driver --set webhook.enabled=true 2>&1 | grep -q "replaced by webhook.mode" \
+            || { echo "FAIL: backwards-compat guard did not trigger"; exit 1; }

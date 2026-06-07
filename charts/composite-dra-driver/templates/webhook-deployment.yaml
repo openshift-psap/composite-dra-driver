@@ -1,4 +1,4 @@
-{{- if .Values.webhook.enabled }}
+{{- if eq (include "composite-dra.webhookNeeded" .) "true" }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:

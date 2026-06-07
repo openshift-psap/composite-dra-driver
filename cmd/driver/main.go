@@ -3,12 +3,16 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
+	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -64,6 +68,8 @@ func main() {
 	if err != nil {
 		klog.Fatalf("create kube client: %v", err)
 	}
+
+	checkKubeVersion(kubeClient.Discovery())
 
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer cancel()
@@ -125,6 +131,20 @@ func main() {
 
 	<-ctx.Done()
 	klog.Info("shutting down")
+}
+
+func checkKubeVersion(disco discovery.DiscoveryInterface) {
+	info, err := disco.ServerVersion()
+	if err != nil {
+		klog.Warningf("could not query API server version: %v", err)
+		return
+	}
+	minor, _ := strconv.Atoi(strings.TrimRight(info.Minor, "+"))
+	if minor >= 36 {
+		klog.Infof("K8s %s detected — DRAExtendedResource feature gate available; "+
+			"webhook is not needed. Use webhook.mode=disabled or webhook.mode=auto in Helm values",
+			fmt.Sprintf("%s.%s", info.Major, info.Minor))
+	}
 }
 
 func buildRESTConfig(kubeconfig string) (*rest.Config, error) {

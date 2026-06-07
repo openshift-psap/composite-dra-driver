@@ -8,6 +8,8 @@ spec:
   selectors:
     - cel:
         expression: {{ .Values.deviceClass.selector | quote }}
-  {{- if .Values.deviceClass.extendedResourceName }}
+  {{- if ne (include "composite-dra.webhookNeeded" .) "true" }}
+  extendedResourceName: {{ .Values.deviceClass.extendedResourceName | default (printf "%s/%s" .Values.driver.name (index .Values.compositions 0).name) | quote }}
+  {{- else if .Values.deviceClass.extendedResourceName }}
   extendedResourceName: {{ .Values.deviceClass.extendedResourceName | quote }}
   {{- end }}
