@@ -6,8 +6,9 @@ import (
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	resourceapi "k8s.io/api/resource/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	resourceclient "k8s.io/client-go/kubernetes/typed/resource/v1"
 	"k8s.io/klog/v2"
@@ -47,10 +48,7 @@ func (m *Mutator) Mutate(ctx context.Context, pod *corev1.Pod, namespace string)
 
 	claimSpec := BuildClaimSpec(m.cfg.DeviceClassName, pairCount)
 
-	templateName := fmt.Sprintf("%s-composite-pairs", pod.GenerateName)
-	if templateName == "-composite-pairs" {
-		templateName = fmt.Sprintf("%s-composite-pairs", pod.Name)
-	}
+	templateName := fmt.Sprintf("%s-composite-pairs", pod.Name)
 	if len(templateName) > 63 {
 		templateName = templateName[:63]
 	}
@@ -70,7 +68,11 @@ func (m *Mutator) Mutate(ctx context.Context, pod *corev1.Pod, namespace string)
 
 	_, err := m.client.ResourceClaimTemplates(namespace).Create(ctx, template, metav1.CreateOptions{})
 	if err != nil {
-		return nil, fmt.Errorf("create claim template: %w", err)
+		if errors.IsAlreadyExists(err) {
+			klog.V(2).Infof("webhook: claim template %s/%s already exists (idempotent)", namespace, templateName)
+		} else {
+			return nil, fmt.Errorf("create claim template: %w", err)
+		}
 	}
 
 	klog.Infof("webhook: created ResourceClaimTemplate %s/%s (%d pairs)",
