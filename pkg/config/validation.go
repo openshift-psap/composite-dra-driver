@@ -27,6 +27,9 @@ func Validate(cfg *CompositeConfig) error {
 		if src.DeviceClassName == "" {
 			return fmt.Errorf("sources[%d].deviceClassName is required", i)
 		}
+		if src.Driver == cfg.Driver.Name {
+			return fmt.Errorf("sources[%d].driver must not reference the composite driver itself (%s); multi-level composition is not supported", i, src.Driver)
+		}
 		if sourceNames[src.Name] {
 			return fmt.Errorf("duplicate source name: %s", src.Name)
 		}

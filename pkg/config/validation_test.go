@@ -80,6 +80,14 @@ func TestValidate_ZeroMemberCount(t *testing.T) {
 	}
 }
 
+func TestValidate_SelfReferencingSource(t *testing.T) {
+	cfg := validConfig()
+	cfg.Sources[0].Driver = cfg.Driver.Name
+	if err := Validate(cfg); err == nil {
+		t.Fatal("expected error for source referencing composite driver itself")
+	}
+}
+
 func TestValidate_UnsupportedConstraintType(t *testing.T) {
 	cfg := validConfig()
 	cfg.Compositions[0].Constraints[0].Type = "distinctAttribute"

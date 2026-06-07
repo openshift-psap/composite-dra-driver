@@ -14,6 +14,7 @@ type DriverConfig struct {
 }
 
 // SourceConfig defines an underlying DRA driver whose devices participate in compositions.
+// Driver must reference a leaf (non-composite) DRA driver; multi-level composition is not supported.
 type SourceConfig struct {
 	Name             string              `json:"name"`
 	Driver           string              `json:"driver"`
