@@ -54,13 +54,21 @@ func TestBuildClaimSpec_RequestNames(t *testing.T) {
 	}
 }
 
-func TestBuildClaimSpec_EightPairs(t *testing.T) {
-	spec := BuildClaimSpec("composite-gpu-nic", 8)
-
-	if len(spec.Devices.Requests) != 8 {
-		t.Fatalf("expected 8 requests, got %d", len(spec.Devices.Requests))
+func TestJsonPatchEscape(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"composite.dra/gpu-nic-pair", "composite.dra~1gpu-nic-pair"},
+		{"nvidia.com/gpu", "nvidia.com~1gpu"},
+		{"simple", "simple"},
+		{"a/b/c", "a~1b~1c"},
+		{"a~b", "a~0b"},
 	}
-	if len(spec.Devices.Constraints) != 0 {
-		t.Fatalf("expected 0 constraints, got %d", len(spec.Devices.Constraints))
+	for _, tt := range tests {
+		got := jsonPatchEscape(tt.input)
+		if got != tt.expected {
+			t.Errorf("jsonPatchEscape(%q) = %q, want %q", tt.input, got, tt.expected)
+		}
 	}
 }

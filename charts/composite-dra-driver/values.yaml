@@ -26,6 +26,7 @@ webhook:
   replicas: 2
   port: 8443
   deviceClassName: composite-gpu-nic
+  resourceName: "composite.dra/gpu-nic-pair"
   resources:
     requests:
       cpu: 25m

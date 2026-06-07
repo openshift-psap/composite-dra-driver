@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strconv"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	resourceapi "k8s.io/api/resource/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	resourceclient "k8s.io/client-go/kubernetes/typed/resource/v1"
@@ -14,20 +14,16 @@ import (
 )
 
 const (
-	// Annotation to request composite device pairs.
-	// Value: "<count>" e.g. "4" for 4 GPU-NIC pairs.
-	PairRequestAnnotation = "composite.dra/gpu-nic-pairs"
-
-	// Annotation set after mutation to prevent re-processing.
 	MutatedAnnotation = "composite.dra/mutated"
 )
 
 // MutatorConfig holds the webhook configuration.
 type MutatorConfig struct {
 	DeviceClassName string
+	ResourceName    string // e.g. "composite.dra/gpu-nic-pair"
 }
 
-// Mutator generates ResourceClaimTemplates for composite devices with NUMA constraints.
+// Mutator generates ResourceClaimTemplates for composite devices.
 type Mutator struct {
 	cfg    MutatorConfig
 	client resourceclient.ResourceV1Interface
@@ -44,10 +40,7 @@ func (m *Mutator) Mutate(ctx context.Context, pod *corev1.Pod, namespace string)
 		return nil, nil
 	}
 
-	pairCount, err := parsePairRequest(pod)
-	if err != nil {
-		return nil, err
-	}
+	pairCount, containerIndices := m.findResourceRequests(pod)
 	if pairCount == 0 {
 		return nil, nil
 	}
@@ -75,7 +68,7 @@ func (m *Mutator) Mutate(ctx context.Context, pod *corev1.Pod, namespace string)
 		},
 	}
 
-	_, err = m.client.ResourceClaimTemplates(namespace).Create(ctx, template, metav1.CreateOptions{})
+	_, err := m.client.ResourceClaimTemplates(namespace).Create(ctx, template, metav1.CreateOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("create claim template: %w", err)
 	}
@@ -83,22 +76,28 @@ func (m *Mutator) Mutate(ctx context.Context, pod *corev1.Pod, namespace string)
 	klog.Infof("webhook: created ResourceClaimTemplate %s/%s (%d pairs)",
 		namespace, templateName, pairCount)
 
-	patches := buildPatches(pod, templateName, pairCount)
+	patches := m.buildPatches(pod, templateName, pairCount, containerIndices)
 	return patches, nil
 }
 
-func parsePairRequest(pod *corev1.Pod) (int, error) {
-	val, ok := pod.Annotations[PairRequestAnnotation]
-	if !ok {
-		return 0, nil
+// findResourceRequests scans all containers for the synthetic resource request.
+// Returns total pair count and indices of containers that have the request.
+func (m *Mutator) findResourceRequests(pod *corev1.Pod) (int, []int) {
+	resName := corev1.ResourceName(m.cfg.ResourceName)
+	totalCount := 0
+	var indices []int
+
+	for i := range pod.Spec.Containers {
+		if qty, ok := pod.Spec.Containers[i].Resources.Requests[resName]; ok {
+			count, ok := qty.AsInt64()
+			if ok && count > 0 {
+				totalCount += int(count)
+				indices = append(indices, i)
+			}
+		}
 	}
 
-	pairCount, err := strconv.Atoi(val)
-	if err != nil || pairCount <= 0 {
-		return 0, fmt.Errorf("invalid pair count in annotation %q: %s", PairRequestAnnotation, val)
-	}
-
-	return pairCount, nil
+	return totalCount, indices
 }
 
 // PatchOp is a JSON Patch operation.
@@ -108,21 +107,39 @@ type PatchOp struct {
 	Value interface{} `json:"value,omitempty"`
 }
 
-func buildPatches(pod *corev1.Pod, templateName string, pairCount int) []PatchOp {
+func (m *Mutator) buildPatches(pod *corev1.Pod, templateName string, pairCount int, containerIndices []int) []PatchOp {
 	var patches []PatchOp
-
-	// Remove annotation
-	patches = append(patches, PatchOp{
-		Op:   "remove",
-		Path: "/metadata/annotations/composite.dra~1gpu-nic-pairs",
-	})
+	resName := corev1.ResourceName(m.cfg.ResourceName)
 
 	// Add mutated annotation
-	patches = append(patches, PatchOp{
-		Op:    "add",
-		Path:  "/metadata/annotations/composite.dra~1mutated",
-		Value: "true",
-	})
+	if pod.Annotations == nil {
+		patches = append(patches, PatchOp{
+			Op:    "add",
+			Path:  "/metadata/annotations",
+			Value: map[string]string{MutatedAnnotation: "true"},
+		})
+	} else {
+		patches = append(patches, PatchOp{
+			Op:    "add",
+			Path:  "/metadata/annotations/composite.dra~1mutated",
+			Value: "true",
+		})
+	}
+
+	// Remove synthetic resource from each container's requests and limits
+	for _, idx := range containerIndices {
+		escapedRes := jsonPatchEscape(string(resName))
+		patches = append(patches, PatchOp{
+			Op:   "remove",
+			Path: fmt.Sprintf("/spec/containers/%d/resources/requests/%s", idx, escapedRes),
+		})
+		if _, ok := pod.Spec.Containers[idx].Resources.Limits[resName]; ok {
+			patches = append(patches, PatchOp{
+				Op:   "remove",
+				Path: fmt.Sprintf("/spec/containers/%d/resources/limits/%s", idx, escapedRes),
+			})
+		}
+	}
 
 	// Add resourceClaims to pod spec
 	claimRef := corev1.PodResourceClaim{
@@ -144,27 +161,32 @@ func buildPatches(pod *corev1.Pod, templateName string, pairCount int) []PatchOp
 		})
 	}
 
-	// Add claims references to first container
-	if len(pod.Spec.Containers) > 0 {
+	// Add claim references to containers that had the resource request
+	pairIdx := 0
+	for _, containerIdx := range containerIndices {
+		qty := pod.Spec.Containers[containerIdx].Resources.Requests[resName]
+		count, _ := qty.AsInt64()
+
 		var claimRefs []corev1.ResourceClaim
-		for i := 0; i < pairCount; i++ {
+		for i := 0; i < int(count); i++ {
 			claimRefs = append(claimRefs, corev1.ResourceClaim{
 				Name:    "composite-pairs",
-				Request: fmt.Sprintf("pair-%d", i),
+				Request: fmt.Sprintf("pair-%d", pairIdx),
 			})
+			pairIdx++
 		}
 
-		if pod.Spec.Containers[0].Resources.Claims == nil {
+		if pod.Spec.Containers[containerIdx].Resources.Claims == nil {
 			patches = append(patches, PatchOp{
 				Op:    "add",
-				Path:  "/spec/containers/0/resources/claims",
+				Path:  fmt.Sprintf("/spec/containers/%d/resources/claims", containerIdx),
 				Value: claimRefs,
 			})
 		} else {
 			for _, ref := range claimRefs {
 				patches = append(patches, PatchOp{
 					Op:    "add",
-					Path:  "/spec/containers/0/resources/claims/-",
+					Path:  fmt.Sprintf("/spec/containers/%d/resources/claims/-", containerIdx),
 					Value: ref,
 				})
 			}
@@ -174,7 +196,26 @@ func buildPatches(pod *corev1.Pod, templateName string, pairCount int) []PatchOp
 	return patches
 }
 
+// jsonPatchEscape escapes / and ~ in JSON Patch paths per RFC 6901.
+func jsonPatchEscape(s string) string {
+	result := make([]byte, 0, len(s))
+	for i := 0; i < len(s); i++ {
+		switch s[i] {
+		case '~':
+			result = append(result, '~', '0')
+		case '/':
+			result = append(result, '~', '1')
+		default:
+			result = append(result, s[i])
+		}
+	}
+	return string(result)
+}
+
 // PatchesToJSON serializes patches to JSON.
 func PatchesToJSON(patches []PatchOp) ([]byte, error) {
 	return json.Marshal(patches)
 }
+
+// Keep resource import used
+var _ = resource.MustParse
