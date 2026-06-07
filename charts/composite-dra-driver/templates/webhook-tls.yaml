@@ -1,4 +1,19 @@
-{{- if and .Values.webhook.enabled (eq .Values.webhook.tls.mode "cert-manager") }}
+{{- if eq (include "composite-dra.webhookNeeded" .) "true" }}
+{{- if eq .Values.webhook.tls.mode "helm-generated" }}
+{{- $certs := include "composite-dra.tlsCerts" . | fromJson }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ include "composite-dra.fullname" . }}-webhook-tls
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "composite-dra.labels" . | nindent 4 }}
+type: kubernetes.io/tls
+data:
+  tls.crt: {{ $certs.crt | b64enc }}
+  tls.key: {{ $certs.key | b64enc }}
+  ca.crt: {{ $certs.ca | b64enc }}
+{{- else if eq .Values.webhook.tls.mode "cert-manager" }}
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
@@ -15,4 +30,5 @@ spec:
     - {{ include "composite-dra.fullname" . }}-webhook.{{ .Values.namespace }}.svc.cluster.local
   issuerRef:
     {{- toYaml .Values.webhook.tls.certManager.issuerRef | nindent 4 }}
+{{- end }}
 {{- end }}

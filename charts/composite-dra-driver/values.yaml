@@ -18,7 +18,11 @@ driver:
   verbosity: 2
 
 webhook:
-  enabled: false
+  # Mode: "auto" | "enabled" | "disabled"
+  #   auto:     deploy webhook on K8s <1.36, skip on >=1.36 (DRAExtendedResource beta)
+  #   enabled:  always deploy (e.g. K8s 1.35 without DRAExtendedResource gate)
+  #   disabled: never deploy (e.g. K8s 1.35 with DRAExtendedResource manually enabled)
+  mode: auto
   image:
     repository: ghcr.io/thameem-abbas/composite-dra-webhook
     tag: latest
@@ -34,17 +38,43 @@ webhook:
     limits:
       cpu: 100m
       memory: 64Mi
-  namespaceSelector:
-    matchLabels:
-      composite.dra/webhook-enabled: "true"
+  # Opt-out namespace model: webhook intercepts all namespaces EXCEPT these.
+  # matchConditions CEL ensures only pods with the synthetic resource are sent to webhook.
+  excludedNamespaces:
+    kubernetes:
+      - kube-system
+      - kube-public
+      - kube-node-lease
+    openshift:
+      - openshift-apiserver
+      - openshift-controller-manager
+      - openshift-etcd
+      - openshift-kube-apiserver
+      - openshift-kube-controller-manager
+      - openshift-kube-scheduler
+      - openshift-machine-api
+      - openshift-machine-config-operator
+      - openshift-monitoring
+      - openshift-network-operator
+      - openshift-sdn
+      - openshift-ovn-kubernetes
+    nvidia:
+      - nvidia-gpu-operator
+      - nvidia-network-operator
+    custom: []
   failurePolicy: Fail
   tls:
-    mode: cert-manager  # cert-manager | helm-generated
+    # Mode: "helm-generated" | "cert-manager" | "manual"
+    #   helm-generated: self-signed CA + cert via Helm genSignedCert (no dependencies)
+    #   cert-manager:   cert-manager Certificate CR (requires cert-manager + Issuer)
+    #   manual:         user creates TLS secret before install, provides caBundle
+    mode: helm-generated
     certManager:
       issuerRef:
         name: ""
         kind: Issuer
         group: cert-manager.io
+    caBundle: ""  # base64-encoded CA cert for manual mode
 
 imagePullSecrets:
   - name: ghcr-pull
@@ -52,8 +82,9 @@ imagePullSecrets:
 deviceClass:
   name: composite-gpu-nic
   selector: 'device.driver == "composite.dra.example.io"'
-  # K8s 1.35+ only:
-  # extendedResourceName: "composite.dra.example.io/gpu-nic-pair"
+  # Auto-populated when webhook is not needed (K8s >=1.36 or webhook.mode=disabled).
+  # Set explicitly to override the auto-generated value.
+  extendedResourceName: ""
 
 sources:
   - name: gpu
@@ -94,16 +125,6 @@ railConfig:
   startingTableID: 100
   crossRailCIDR: ""
   rails: []
-  # Example:
-  # crossRailCIDR: "10.0.0.0/13"
-  # rails:
-  #   - selector:
-  #       cel: 'device.attributes["dra.net"].ipv4.startsWith("10.0.")'
-  #     config:
-  #       subnet: "10.0.0.0/16"
-  #       gateway: "10.0.0.1"
-  #       mtu: 9000
-  #       tableID: 100
 
 openshift:
   scc:

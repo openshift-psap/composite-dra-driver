@@ -1,4 +1,12 @@
-{{- if .Values.webhook.enabled }}
+{{- if eq (include "composite-dra.webhookNeeded" .) "true" }}
+{{- $ns := .Values.namespace -}}
+{{- $caBundle := "" -}}
+{{- if eq .Values.webhook.tls.mode "helm-generated" -}}
+  {{- $certs := include "composite-dra.tlsCerts" . | fromJson -}}
+  {{- $caBundle = $certs.ca | b64enc -}}
+{{- else if eq .Values.webhook.tls.mode "manual" -}}
+  {{- $caBundle = .Values.webhook.tls.caBundle -}}
+{{- end -}}
 apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
@@ -7,26 +15,44 @@ metadata:
     {{- include "composite-dra.labels" . | nindent 4 }}
   {{- if eq .Values.webhook.tls.mode "cert-manager" }}
   annotations:
-    cert-manager.io/inject-ca-from: {{ .Values.namespace }}/{{ include "composite-dra.fullname" . }}-webhook-tls
+    cert-manager.io/inject-ca-from: {{ $ns }}/{{ include "composite-dra.fullname" . }}-webhook-tls
   {{- end }}
 webhooks:
   - name: composite-dra.webhook.k8s.io
     admissionReviewVersions: ["v1"]
     sideEffects: None
     failurePolicy: {{ .Values.webhook.failurePolicy }}
+    matchConditions:
+      - name: has-composite-resource
+        expression: >-
+          object.spec.containers.exists(c,
+            has(c.resources) && has(c.resources.requests) &&
+            {{ .Values.webhook.resourceName | quote }} in c.resources.requests)
     clientConfig:
       service:
         name: {{ include "composite-dra.fullname" . }}-webhook
-        namespace: {{ .Values.namespace }}
+        namespace: {{ $ns }}
         path: /mutate
         port: 443
+      {{- if ne .Values.webhook.tls.mode "cert-manager" }}
+      caBundle: {{ $caBundle }}
+      {{- end }}
     rules:
       - operations: ["CREATE"]
         apiGroups: [""]
         apiVersions: ["v1"]
         resources: ["pods"]
-    {{- with .Values.webhook.namespaceSelector }}
     namespaceSelector:
-      {{- toYaml . | nindent 6 }}
-    {{- end }}
+      matchExpressions:
+      {{- $allExcluded := list .Values.namespace }}
+      {{- $allExcluded = concat $allExcluded .Values.webhook.excludedNamespaces.kubernetes }}
+      {{- $allExcluded = concat $allExcluded .Values.webhook.excludedNamespaces.openshift }}
+      {{- $allExcluded = concat $allExcluded .Values.webhook.excludedNamespaces.nvidia }}
+      {{- $allExcluded = concat $allExcluded .Values.webhook.excludedNamespaces.custom }}
+      - key: kubernetes.io/metadata.name
+        operator: NotIn
+        values:
+        {{- range $allExcluded }}
+        - {{ . | quote }}
+        {{- end }}
 {{- end }}
