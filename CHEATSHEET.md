@@ -44,10 +44,14 @@ spec:
     image: my-image
     resources:
       requests:
-        composite.dra/gpu-nic-pair: "4"    # request 4 GPU-NIC pairs
+        composite.dra/gpu-nic-pair: "4"
+      limits:
+        composite.dra/gpu-nic-pair: "4"    # must match requests (K8s extended resource rule)
 ```
 
-Webhook strips the synthetic resource, creates a ResourceClaimTemplate, and patches the pod with claim refs. Same UX as the old webhook.
+Webhook strips the synthetic resource from both requests and limits, creates a ResourceClaimTemplate, and patches the pod with claim refs.
+
+**Note:** Both `requests` and `limits` must be set and equal — K8s requires this for extended resources. This is especially important when using StatefulSet, LeaderWorkerSet, or other controllers that validate the pod template before pod creation.
 
 ### Method 2: Manual ResourceClaimTemplate
 
