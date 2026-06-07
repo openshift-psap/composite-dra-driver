@@ -24,7 +24,7 @@ helm upgrade composite charts/composite-dra-driver \
 
 ## Request GPU-NIC Pairs
 
-### Method 1: Webhook annotation (simplest)
+### Method 1: Webhook resource request (simplest)
 
 Requires: webhook enabled, namespace labeled.
 
@@ -38,15 +38,16 @@ apiVersion: v1
 kind: Pod
 metadata:
   name: my-pod
-  annotations:
-    composite.dra/gpu-nic-pairs: "4"    # request 4 GPU-NIC pairs
 spec:
   containers:
   - name: app
     image: my-image
+    resources:
+      requests:
+        composite.dra/gpu-nic-pair: "4"    # request 4 GPU-NIC pairs
 ```
 
-Webhook auto-generates ResourceClaimTemplate and patches the pod. No manual claims needed.
+Webhook strips the synthetic resource, creates a ResourceClaimTemplate, and patches the pod with claim refs. Same UX as the old webhook.
 
 ### Method 2: Manual ResourceClaimTemplate
 
