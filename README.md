@@ -163,13 +163,29 @@ See [values.yaml](charts/composite-dra-driver/values.yaml) for all options.
 - Underlying DRA drivers deployed (e.g., nvidia GPU driver, dranet)
 - OpenShift: SCC for hostPath volumes (auto-created by Helm chart)
 
+## Known Limitations
+
+- **No NUMA affinity enforcement** — composite devices carry `numaNode` as an attribute but the webhook does not generate MatchAttribute constraints. NUMA packing requires manual ResourceClaimTemplates with explicit constraints. ([#1](https://github.com/openshift-psap/composite-dra-driver/issues/1), [Discussion #11](https://github.com/openshift-psap/composite-dra-driver/discussions/11))
+
+- **Single composition type** — all composite devices share one DeviceClass. Can't request different composition types (e.g., GPU-NIC and GPU-FPGA) independently in the same cluster. ([#16](https://github.com/openshift-psap/composite-dra-driver/issues/16))
+
+- **NIC config coupled to dranet** — `RailConfig` and shadow claim opaque parameters use dranet's internal JSON format. Other NIC drivers would require code changes. ([#9](https://github.com/openshift-psap/composite-dra-driver/issues/9))
+
+- **Stale ResourceClaimTemplates** — webhook creates templates but doesn't clean them up on pod deletion. Templates accumulate until manually deleted. Reconciler planned. ([#17](https://github.com/openshift-psap/composite-dra-driver/issues/17))
+
+- **No metrics or events** — operational visibility is klog only. No Prometheus metrics, no Kubernetes Events on claims. ([#18](https://github.com/openshift-psap/composite-dra-driver/issues/18))
+
+- **Webhook required on K8s < 1.36** — the `DRAExtendedResource` feature gate is beta (on by default) in K8s 1.36, eliminating the need for the webhook. On K8s 1.35, the gate exists as alpha and can be manually enabled — see [Method 3 in the cheatsheet](docs/CHEATSHEET.md#method-3-extended-resource-k8s-135-with-draextendedresource-gate) and the [FAQ entry on dropping the webhook](docs/FAQ.md#when-can-we-drop-the-webhook-entirely). On K8s 1.34, the webhook is the only option for the resource request UX.
+
+- **Extended resources require limits == requests** — Kubernetes requires this for all extended resources. Affects StatefulSet/LWS pod templates. Not a bug — K8s API constraint.
+
 ## Documentation
 
-- [CHEATSHEET.md](CHEATSHEET.md) — install, request methods, verify, troubleshoot
-- [FAQ.md](FAQ.md) — architecture decisions, scheduling, networking, performance
-- [HA-DESIGN.md](HA-DESIGN.md) — failure scenarios, DaemonSet vs Deployment HA
-- [STATUS.md](STATUS.md) — implementation status and validation evidence
-- [AGENTS.md](AGENTS.md) — instructions for AI coding agents
+- [Cheatsheet](docs/CHEATSHEET.md) — install, request methods, verify, troubleshoot
+- [FAQ](docs/FAQ.md) — architecture decisions, scheduling, networking, performance
+- [HA Design](docs/HA-DESIGN.md) — failure scenarios, DaemonSet vs Deployment HA
+- [Status](docs/STATUS.md) — implementation status and validation evidence
+- [Agents](docs/AGENTS.md) — instructions for AI coding agents
 
 ## License
 

@@ -59,7 +59,7 @@ charts/composite-dra-driver/ ← Helm chart (driver + optional webhook)
 ## Cluster Testing (Poseidon)
 
 ```bash
-export KUBECONFIG=/home/thibrahi/kubeconfigs/kubeconfig_files/poseidon
+export KUBECONFIG=<path-to-cluster-kubeconfig>
 
 # Deploy via Helm
 helm install composite charts/composite-dra-driver \
@@ -119,7 +119,7 @@ oc logs -l app.kubernetes.io/component=driver \
 
 ## Reference Repos
 
-- `/home/thibrahi/workspace/refs_repos/kubernetes/` — K8s source (kubeletplugin, DRA APIs)
-- `/home/thibrahi/workspace/refs_repos/dranet/` — dranet DRA driver (NRI hooks, PodConfigStore)
-- `/home/thibrahi/workspace/refs_repos/dra-rail-admission-webhook/` — old webhook (reference for rail config)
-- `nvidia-dra-driver-gpu` — nvidia DRA driver (CDI, checkpoint)
+- [kubernetes/kubernetes](https://github.com/kubernetes/kubernetes) — K8s source (kubeletplugin at `staging/src/k8s.io/dynamic-resource-allocation/`, DRA APIs at `staging/src/k8s.io/api/resource/v1/`)
+- [kubernetes-sigs/dranet](https://github.com/kubernetes-sigs/dranet) — dranet DRA driver (NRI hooks, PodConfigStore)
+- [openshift-psap/dra-rail-admission-webhook](https://github.com/openshift-psap/dra-rail-admission-webhook) — old webhook (reference for rail config)
+- [kubernetes-sigs/dra-driver-nvidia-gpu](https://github.com/kubernetes-sigs/dra-driver-nvidia-gpu) — nvidia DRA driver (CDI, checkpoint)
