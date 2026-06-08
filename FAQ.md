@@ -76,7 +76,7 @@ DRA kubelet plugins register via unix sockets at `/var/lib/kubelet/plugins/<driv
 
 ### Can the webhook have HA?
 
-Yes — runs as a 2-replica Deployment behind a Service. Stateless (reads annotation, creates template, patches pod). The `composite.dra/mutated` annotation prevents re-processing on retries. Active-standby with leader election is discussed in Discussion #10.
+Yes — runs as a 2-replica Deployment behind a Service. Stateless (intercepts synthetic resource request, creates template, patches pod). The `composite.dra/mutated` annotation prevents re-processing on retries. Active-standby with leader election is discussed in Discussion #10.
 
 ### Why does it need privileged SCC on OpenShift?
 
