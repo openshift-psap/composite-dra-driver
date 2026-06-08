@@ -163,22 +163,6 @@ See [values.yaml](charts/composite-dra-driver/values.yaml) for all options.
 - Underlying DRA drivers deployed (e.g., nvidia GPU driver, dranet)
 - OpenShift: SCC for hostPath volumes (auto-created by Helm chart)
 
-## MVP Test Results
-
-Validated on OCP 4.21 / K8s 1.34 cluster with 4× 8×H100 GPU nodes:
-
-| Test | Result |
-|------|--------|
-| Composite device synthesis | 8 pairs per node, CEL filter 8/13 NICs |
-| Scheduler-native allocation | No webhook, no node pinning |
-| Shadow claim delegation | gRPC to nvidia + dranet |
-| GPU visibility | nvidia-smi shows allocated GPUs |
-| NIC in pod netns | net0/net1, MTU 9000, per-rail routing |
-| Same-rail ping | 0.5ms, 0% loss |
-| Cross-rail ping | 0.7ms via L3 gateway |
-| RDMA write BW (QP=8) | 318 Gb/s avg, 373 Gb/s peak |
-| 8-pair prepare time | ~3s (15ms shadow creates + nvidia CDI gen) |
-
 ## Documentation
 
 - [CHEATSHEET.md](CHEATSHEET.md) — install, request methods, verify, troubleshoot
