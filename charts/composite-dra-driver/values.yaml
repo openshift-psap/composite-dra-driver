@@ -76,8 +76,7 @@ webhook:
         group: cert-manager.io
     caBundle: ""  # base64-encoded CA cert for manual mode
 
-imagePullSecrets:
-  - name: ghcr-pull
+imagePullSecrets: []
 
 deviceClass:
   name: composite-gpu-nic
