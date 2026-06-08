@@ -61,7 +61,7 @@
   <br>
   <div style="font-size:0.6em; color:#484f58;">
     2026-06-05 &nbsp;·&nbsp; OCP 4.21 / K8s 1.34 &nbsp;·&nbsp; 4× 8×H100 GPU nodes<br>
-    github.com/thameem-abbas/composite-dra-driver
+    github.com/openshift-psap/composite-dra-driver
   </div>
 </section>
 
@@ -391,7 +391,7 @@ I0605 14:13:22.633197  plugin: prepared claim composite-dra-test/
     </div>
     <p style="font-size:0.7em;">Per shadow claim: 2 API server calls (Create + UpdateStatus) + 1 gRPC call<br>
     nvidia gRPC: ~270ms avg (CDI gen) · dranet gRPC: ~50ms avg (config store)<br>
-    <span class="orn">Parallelization tracked in <a href="https://github.com/thameem-abbas/composite-dra-driver/issues/5">#5</a> — estimated ~310ms for any pair count</span></p>
+    <span class="orn">Parallelization tracked in <a href="https://github.com/openshift-psap/composite-dra-driver/issues/5">#5</a> — estimated ~310ms for any pair count</span></p>
   </section>
 </section>
 
@@ -617,7 +617,7 @@ link mlx5_1/1 state ACTIVE physical_state LINK_UP netdev net1</code></pre>
     <p><span class="grn">✓</span> NIC in pod netns (ip link, routing, RDMA)</p>
     <p><span class="grn">✓</span> Same-rail + cross-rail ping</p>
     <p><span class="grn">✓</span> Parallel shadow claims (PR #12) — 4.6s → 3s for 8 pairs</p>
-    <p><span class="orn">2.</span> Attribute dedup + rail index (<a href="https://github.com/thameem-abbas/composite-dra-driver/issues/4">#4</a>)</p>
+    <p><span class="orn">2.</span> Attribute dedup + rail index (<a href="https://github.com/openshift-psap/composite-dra-driver/issues/4">#4</a>)</p>
     <p><span class="orn">3.</span> Cleanup test — delete pod, verify shadow claims GC'd</p>
     <p><span class="orn">4.</span> NUMA-aware webhook for constrained allocation</p>
     <p><span class="orn">5.</span> K8s 1.35+ DRAExtendedResource testing</p>
@@ -707,7 +707,7 @@ oc label ns <namespace> composite.dra/webhook-enabled=true</code></pre>
   <h1 style="color:#7ee787;">MVP: Pass ✓</h1>
   <br>
   <p style="font-size:0.7em; color:#8b949e;">
-    github.com/thameem-abbas/composite-dra-driver<br>
+    github.com/openshift-psap/composite-dra-driver<br>
     Poseidon cluster · 2026-06-05
   </p>
 </section>

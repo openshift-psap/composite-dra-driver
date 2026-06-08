@@ -65,7 +65,7 @@
   <p style="color:#8b949e; font-size:0.8em;">Full operation flow for <code>gpu-nic-pair: 4</code></p>
   <br>
   <div style="font-size:0.6em; color:#484f58;">
-    github.com/thameem-abbas/composite-dra-driver<br>
+    github.com/openshift-psap/composite-dra-driver<br>
     Navigate: ← → arrows &nbsp;|&nbsp; Overview: <kbd>Esc</kbd>
   </div>
 </section>
@@ -471,28 +471,59 @@ dranet NRI plugin fires:
     <h2>Failure Recovery</h2>
   </section>
   <section>
+    <h3>Why Idempotent</h3>
+    <div style="font-size:0.75em; text-align:left; max-width:900px; margin:0 auto;">
+      <p>Every layer in the chain can be called <strong>multiple times for the same claim</strong> and produce the same result:</p>
+      <div class="box box-blue">
+        <p><span class="blu">Kubelet</span> retries <code>PrepareResourceClaims</code> on any error or after driver restart — by design.</p>
+      </div>
+      <div class="box box-blue">
+        <p><span class="blu">Composite driver</span> — shadow claims use deterministic names (<code>shadow-{claim}-{source}-{device}</code>). Second create for the same name hits <code>AlreadyExists</code> → driver detects and reuses. BoltDB restores mapping on restart so Unprepare knows what to clean.</p>
+      </div>
+      <div class="box box-blue">
+        <p><span class="blu">nvidia driver</span> — checks <code>checkpoint.PreparedClaims[claimUID]</code>. If already prepared, returns cached CDI device IDs. No duplicate CDI specs.</p>
+      </div>
+      <div class="box box-blue">
+        <p><span class="blu">dranet driver</span> — <code>PodConfigStore.SetDeviceConfig(podUID, device)</code> overwrites same key. NRI hook reads latest config. No duplicate interface moves.</p>
+      </div>
+      <div class="box box-blue">
+        <p><span class="blu">Webhook</span> — checks <code>composite.dra/mutated</code> annotation. If set, returns no patches. Re-admission of same pod is a no-op.</p>
+      </div>
+    </div>
+  </section>
+  <section>
     <h3>Failure Scenarios</h3>
     <table>
-      <tr><th>Failure</th><th>Recovery</th></tr>
+      <tr><th>Failure</th><th>Recovery</th><th>Why it works</th></tr>
       <tr>
-        <td>Driver pod crash</td>
-        <td>BoltDB restore → kubelet retries Prepare (idempotent)</td>
+        <td>Driver pod crash mid-prepare</td>
+        <td>DaemonSet restarts → BoltDB restore → kubelet retries</td>
+        <td>Shadow claims already in API server survive crash. Re-prepare is idempotent.</td>
       </tr>
       <tr>
         <td>Node goes down</td>
         <td>ResourceSlices GC'd → scheduler won't allocate → pods reschedule</td>
+        <td>ResourceSlices owned by Node object. No stale devices to allocate.</td>
       </tr>
       <tr>
-        <td>Stale composite device</td>
-        <td>Prepare fails → pod rescheduled (self-healing)</td>
+        <td>Stale composite device allocated</td>
+        <td>Prepare fails → kubelet reports error → pod rescheduled</td>
+        <td>Self-healing: scheduler picks different node on retry.</td>
       </tr>
       <tr>
         <td>Orphaned shadow claims</td>
         <td>Reconciler (5-min loop) + OwnerReference GC</td>
+        <td>Shadow claims have OwnerRef → composite claim. Cascade delete on claim removal.</td>
       </tr>
       <tr>
         <td>Underlying driver unavailable</td>
-        <td>gRPC error → kubelet retries later</td>
+        <td>gRPC error → kubelet retries Prepare later</td>
+        <td>Kubelet has built-in retry with backoff. Driver socket reconnects.</td>
+      </tr>
+      <tr>
+        <td>Webhook pod crash</td>
+        <td>2 replicas behind Service → surviving replica handles traffic</td>
+        <td>Webhook is stateless. Annotation idempotency prevents re-mutation.</td>
       </tr>
     </table>
   </section>
@@ -537,7 +568,7 @@ dranet NRI plugin fires:
   <h2>Links</h2>
   <br>
   <p style="font-size:0.8em;">
-    <span class="blu">Repo:</span> github.com/thameem-abbas/composite-dra-driver<br><br>
+    <span class="blu">Repo:</span> github.com/openshift-psap/composite-dra-driver<br><br>
     <span class="blu">Issue #1:</span> NUMA affinity with DRAExtendedResource API<br><br>
     <span class="blu">Discussion #3:</span> Architecture — Shadow Claims + Extended Resources
   </p>

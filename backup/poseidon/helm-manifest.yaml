@@ -1,0 +1,456 @@
+---
+# Source: dra-admission-webhook/templates/pdb.yaml
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: dra-gpu-nic-webhook
+  namespace: dra-webhook-system
+  labels:
+    helm.sh/chart: dra-admission-webhook-0.1.0
+    app.kubernetes.io/name: dra-admission-webhook
+    app.kubernetes.io/instance: dra
+    app.kubernetes.io/version: "main"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: webhook
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: dra-admission-webhook
+      app.kubernetes.io/instance: dra
+      app.kubernetes.io/component: webhook
+---
+# Source: dra-admission-webhook/templates/rbac.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: dra-gpu-nic-webhook
+  namespace: dra-webhook-system
+  labels:
+    helm.sh/chart: dra-admission-webhook-0.1.0
+    app.kubernetes.io/name: dra-admission-webhook
+    app.kubernetes.io/instance: dra
+    app.kubernetes.io/version: "main"
+    app.kubernetes.io/managed-by: Helm
+---
+# Source: dra-admission-webhook/templates/mutatingwebhookconfiguration.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: dra-gpu-nic-webhook-tls
+  namespace: dra-webhook-system
+  labels:
+    helm.sh/chart: dra-admission-webhook-0.1.0
+    app.kubernetes.io/name: dra-admission-webhook
+    app.kubernetes.io/instance: dra
+    app.kubernetes.io/version: "main"
+    app.kubernetes.io/managed-by: Helm
+type: kubernetes.io/tls
+data:
+  tls.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURxekNDQXBPZ0F3SUJBZ0lRTFhScVpvbjhlbVJoUWZzdmZ6V1NiakFOQmdrcWhraUc5dzBCQVFzRkFEQVoKTVJjd0ZRWURWUVFERXc1a2NtRXRkMlZpYUc5dmF5MWpZVEFlRncweU5qQTFNak14TkRNd01EbGFGdzB5TnpBMQpNak14TkRNd01EbGFNRFV4TXpBeEJnTlZCQU1US21SeVlTMW5jSFV0Ym1sakxYZGxZbWh2YjJzdVpISmhMWGRsClltaHZiMnN0YzNsemRHVnRMbk4yWXpDQ0FTSXdEUVlKS29aSWh2Y05BUUVCQlFBRGdnRVBBRENDQVFvQ2dnRUIKQUtiTHJtdUxXb0JmTFZnOS9RRzdkMjNQbGtGZmQ1anBSOVVXaG8ycWFjMDZQNVQ1R3dZVFlOY1NyQkhhK3hhZApwMC9kZ0xTaCtFQTZwZW9wTGh2QTRCYlJCVWpoT212T1M0azRvVWYySkJSd2VnMS92MDNJakl1bnlrMXp5cjcyCmVvcWNPUjR5dUwyOXZuV3JKVnA0V0RwNkZuQVEzcUhKdGhORFk3aUVIUS9qY21lMDRkS2piQ2RkQnVCOVMyWXoKNVZCUmpyQ1JYSi9wUHFMWGRlSFB6SHFCSEdqVE9MSUl3WmtBNC8zWWJTajFnTFpCcmdxeUM0ZldSRXEreDA3YwpEeXU5Q1RCeUNFOVdHWHlLNVBRUlk4ZFplK0JOTjVLZk93YjZpWTRHU0VsaFFBMEVMdFczTnluV0NCYzN0eko2CjI5NUFJb3k2akZMWUsvc3JHaFdlRitFQ0F3RUFBYU9CMGpDQnp6QU9CZ05WSFE4QkFmOEVCQU1DQmFBd0hRWUQKVlIwbEJCWXdGQVlJS3dZQkJRVUhBd0VHQ0NzR0FRVUZCd01DTUF3R0ExVWRFd0VCL3dRQ01BQXdId1lEVlIwagpCQmd3Rm9BVU9zZlRoZC9naTJLWlEzZVVMTDRxdzIySld2TXdid1lEVlIwUkJHZ3dab0lxWkhKaExXZHdkUzF1CmFXTXRkMlZpYUc5dmF5NWtjbUV0ZDJWaWFHOXZheTF6ZVhOMFpXMHVjM1pqZ2poa2NtRXRaM0IxTFc1cFl5MTMKWldKb2IyOXJMbVJ5WVMxM1pXSm9iMjlyTFhONWMzUmxiUzV6ZG1NdVkyeDFjM1JsY2k1c2IyTmhiREFOQmdrcQpoa2lHOXcwQkFRc0ZBQU9DQVFFQUdXaHp4cnZFSVZCM280WVR1R2lNNFB3eGVkTmR3QjJCSXVzSWIxNGUvZDEzCnRlU0pIakIwZjZpNE5iRGRUaER6bEVSQzdLc3JaVTAvSy8vYTRHSDJGQXVnaDRKOEZ2WFZoOVBiWU9TUlFNLysKZTFNamFhTTFNY1FKdGxCb09ISkYzc2J3cFFZelVGajQ0VTZoelBJVlhBUjk2UE9OWnZJMDlYVDBKd2dkYUpoWQpaU3o3aFNqWXVleUJGM0s0TE9YMW53Umc5QUY2YllMdGY1UGtqTlpxcGlzUURmdFlkMEYyR0VldEZtVUk2cUcyCkxwVkkvNDRnTFdER0lmL1RNZUtGUGRGdVd6WlZ0aTB6NVBXS3c0M3BFcVhRcGkyUHNDdnQ1YlhlYUtHMzRZQ3UKSmtyWnV3aGdwNUQrY3c1dXFuQncxV0ZJdnVZMHpyNW80RHphV2YxYmNRPT0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
+  tls.key: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFcEFJQkFBS0NBUUVBcHN1dWE0dGFnRjh0V0QzOUFidDNiYytXUVY5M21PbEgxUmFHamFwcHpUby9sUGtiCkJoTmcxeEtzRWRyN0ZwMm5UOTJBdEtINFFEcWw2aWt1RzhEZ0Z0RUZTT0U2YTg1TGlUaWhSL1lrRkhCNkRYKy8KVGNpTWk2ZktUWFBLdnZaNmlwdzVIaks0dmIyK2Rhc2xXbmhZT25vV2NCRGVvY20yRTBOanVJUWREK055WjdUaAowcU5zSjEwRzRIMUxaalBsVUZHT3NKRmNuK2srb3RkMTRjL01lb0VjYU5NNHNnakJtUURqL2RodEtQV0F0a0d1CkNySUxoOVpFU3I3SFR0d1BLNzBKTUhJSVQxWVpmSXJrOUJGangxbDc0RTAza3A4N0J2cUpqZ1pJU1dGQURRUXUKMWJjM0tkWUlGemUzTW5yYjNrQWlqTHFNVXRncit5c2FGWjRYNFFJREFRQUJBb0lCQUJCTkZiWFMvN3hPRVB0dgp5M3RRM0FJeWFJZnBFYUl6SWw4VC9ZQjQ2REF6Z2lWSUZ6a0h5YzRiT0EvaXErbHc3UG9rTnNEd2wzZUhnOUdYCnhyYlZxZER4Q3FndHd1em9VMytNdGs1M0l0MlFoSTB2TC80bEhIOUZuY0xtRHltTW96dEt1MVpWTkxMdWlWK3MKbzFEdE5BbzdCbGhiZmJhb0pSQks1TU1TdmxoZ0JNeVdabS90Zzg0TUZrajdocG42N2V0Z0J6SG5ldTRtV3A2YQpPWG04ajlZQ2F6YklhenlFR0d2Y2ZWaUdyanF1OC9nc1JOSFdWY0pEL1FMN1dKcU9PVUY1RUZjK3M2QWF6Uy9zCm5BaSswUzlGVHVreU5PWUtqLytqUzdwNzIyM1RNbmNsUzRjMURUNElZVmpqQnRUWGJEOGVjVG1GSUZoek9mWEwKNWFkaUxjRUNnWUVBMlNiVi9hR0ovcW9oRmZ4S2w4VGtSTVRMZkJkUWx0c0NMMFBrWmZHL1gzNDM3dVp1Mmp0Sgp4RlR3RXdnOVN0eGgrc1ZHalpmelNNcGl5QzlpeE1GekViSDZoM0xVUE5UTlk3cjFSRWoyOVNDK1l0cFJvRFJWClVXM2grWWJtS0pSbkJvSEZadGNRVkJEWlV2ZWlVY05UTzQ5ejhrZ2dxdEFlZG5BMGlJS1pSZWtDZ1lFQXhLS2cKVnRsZXFnODBWV2o3WEk3VEFpMHpFeDcyS0U2VmFiMzJJd0VoSEJzWGNwdDNsOXlTdnhPQjF2USsrY3ZVWGM3QwpGM04xV3Exa3poKzkzcjZKNUZqdXducE9xVzdZbUl6TE9qYlhERFJHaEQxTGZDMzg3bGluam1YZU9BVktKcFhFClFBQTZPK2VrQ3FWWUdHdHRjcmpFYTc0MlNMb1phd0FKazJiUjd6a0NnWUJrZTVvTjhWQWZyYTM5dEc3MzU3NFIKTEZkVXBwMCtFVDNqalRFRkUyYVEwNkVpUlRNS2ZPRFhuczR3b0dGc1lLcGVGaWRkb2ZDTHdFc1Jnd3ZiTEFFSgpNU2hTd1FvQTFCL3VoRGEyVUdVbWJPNXNZOFhkc2huQXdtNE12eVdGcFpZKzVwSG4wcURWcGE1S3ZCZzZhWDM4ClU1YzloNjdHRytQY3ZuTXdyKzRvOFFLQmdRQ3U2QldGaTA3SUtFUWQ0UWNOdXNGNUF5bVdUWWthSzJSK0xZbmUKY3llM2IyVzQvUTh4RnZPMVlTMnlQWW95K2hzSjRsc0ZMeDlwTENrcHJGUmc2TTJSUDRZSm1XK1ZDTk5EUnFHVApRNnFmNFhRRU50MkpOUUx5SkF2Ty8wL2VOdDVSV2hDNStUblRoV1dHVHJNQTdiWHFRTzMvQkxBV211cjNJWTVpCi9pZXBDUUtCZ1FDeTFyeHpVOXFteU1QYWtOWXE4VzU4Wkh1Z3FsOGF2K0hBMFh2cGNIUXdRQjAxa21YM2VJcisKTEdnN2RzS2tWby8yZ29mQUtlZ3ljaUhNOTQrWG9kYVUyZVR3OUV5bEtSc1N0NGV2MFN5Vjdpc1lnbExoMlQ2UQpSNFdwc0xkRGIvVDBzRHJRTDRIcDRTaCtTMmZpMDVpelVFaXRtWEdDYWFhL3g1N29GcDNTZ0E9PQotLS0tLUVORCBSU0EgUFJJVkFURSBLRVktLS0tLQo=
+  ca.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURIVENDQWdXZ0F3SUJBZ0lRWFZzZk5JdHVXQUhNeU1BaTUyTFdDVEFOQmdrcWhraUc5dzBCQVFzRkFEQVoKTVJjd0ZRWURWUVFERXc1a2NtRXRkMlZpYUc5dmF5MWpZVEFlRncweU5qQTFNak14TkRNd01EbGFGdzB5TnpBMQpNak14TkRNd01EbGFNQmt4RnpBVkJnTlZCQU1URG1SeVlTMTNaV0pvYjI5ckxXTmhNSUlCSWpBTkJna3Foa2lHCjl3MEJBUUVGQUFPQ0FROEFNSUlCQ2dLQ0FRRUFxY2lkZnhESUxpd29lZjlwTVZuUDV3VCtaM1RrYXUwZEU3SG4KMVJlbGlwQ0tJVGVBK2F2ODZBcC9ycWV5a09ianlFTC9VMGwzeFVUUi9iaGJTaUF0T1dwOXN0TXh3MnQ5UjZncwpWL0FQaFY2eFVEU3UyeGVHLzN1UUFPemxTZ3lYd2t3cStEL2p1TUVNdE1BUkFIQW1yWjl1R3FaNjVOSHNXZEduClQxWkRLR2pTQnAxeUFacDNZc28wRFhURGRsZ0FhUWlXUGVuSzcya1VsQmxoTS9vREcvY21KdFJCVmh5blpVdzMKYlRtODVOMGxTU1BGRUZhZkZMNEgzQlgveXVxQlB4eVV6OVRncHVMWnp6TFdESWovU2kvbEthNDJTNnZiYzJuUwpXQjhmb016MGRnNzFHTmJlc2hWYVFIZXhEZWtrY0Z5aSsyWWRxTTNLeFNBQTdpUDVnd0lEQVFBQm8yRXdYekFPCkJnTlZIUThCQWY4RUJBTUNBcVF3SFFZRFZSMGxCQll3RkFZSUt3WUJCUVVIQXdFR0NDc0dBUVVGQndNQ01BOEcKQTFVZEV3RUIvd1FGTUFNQkFmOHdIUVlEVlIwT0JCWUVGRHJIMDRYZjRJdGltVU4zbEN5K0tzTnRpVnJ6TUEwRwpDU3FHU0liM0RRRUJDd1VBQTRJQkFRQUFGeGVZc1doUGd1a1lvL1pWWUt2QzBJVWlmZHhLL3RwbmJyTDg1Q1l3Clp3VHpyMXN2bVBuQXJYUWdsL1pKaHRHbmMvdC96eFo0b3hFaEhZNjFkMVVIdnRTZHF2YVBZRGUzSW1wOVdwSlkKTUpCUVFqVXNxWllhRGNPcHA2MlQvRzhySWkzVFlxd1JYK0pOT1FWNjVscHJJU2dOU2VqMG41SkZLSVFXNFlkUQpxbjdiYWNNL2cyaUV3RERCam92ZWxpYU90Y3BIVS9Ed1ZqT1YvcEhIZ2NGQkh2ZlliYlc1YmtZQUgzN0JkNmpvCmdxa3J5RHRVQUVGNStwcVV6bmNnMWw5K2ZhRGtTMnZreU8zWnpRcWNOSEIzL0dUeHdqeDlWUkZkK25IdzVEancKdUh2cUNnUTF0Z25wQzhiRUx1MlovS29NZWE4U0p1Ukh3cTBEVkxaZ0VrNlIKLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
+---
+# Source: dra-admission-webhook/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dra-gpu-nic-webhook-config
+  namespace: dra-webhook-system
+  labels:
+    helm.sh/chart: dra-admission-webhook-0.1.0
+    app.kubernetes.io/name: dra-admission-webhook
+    app.kubernetes.io/instance: dra
+    app.kubernetes.io/version: "main"
+    app.kubernetes.io/managed-by: Helm
+data:
+  config.yaml: |
+    gpuDeviceClassName: gpu.nvidia.com
+    interceptExtendedResources:
+    - deviceClassName: gpu.nvidia.com
+      resourceName: nvidia.com/gpu
+    maxPairsPerNUMA: 4
+    maxPairsPerNode: 8
+    nicConfig:
+      crossRailCIDR: 10.0.0.0/13
+      interfacePrefix: net
+      mtu: 9000
+      rails:
+      - gateway: 10.0.0.1
+        ipv4Prefix: 10.0.
+        subnet: 10.0.0.0/16
+      - gateway: 10.1.0.1
+        ipv4Prefix: 10.1.
+        subnet: 10.1.0.0/16
+      - gateway: 10.2.0.1
+        ipv4Prefix: 10.2.
+        subnet: 10.2.0.0/16
+      - gateway: 10.3.0.1
+        ipv4Prefix: 10.3.
+        subnet: 10.3.0.0/16
+      - gateway: 10.4.0.1
+        ipv4Prefix: 10.4.
+        subnet: 10.4.0.0/16
+      - gateway: 10.5.0.1
+        ipv4Prefix: 10.5.
+        subnet: 10.5.0.0/16
+      - gateway: 10.6.0.1
+        ipv4Prefix: 10.6.
+        subnet: 10.6.0.0/16
+      - gateway: 10.7.0.1
+        ipv4Prefix: 10.7.
+        subnet: 10.7.0.0/16
+      rdmaRequired: true
+      startingTableId: 100
+    nicDeviceClassName: dranet
+    preflightCheck: false
+    transportMode: ethernet
+  reconciler.yaml: |
+    autoReap: false
+    gracePeriod: 10m
+    interval: 5m
+    pruneAfter: 168h
+    statePath: /data/reconciler-state.json
+---
+# Source: dra-admission-webhook/templates/reconciler-pvc.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: dra-gpu-nic-webhook-reconciler-state
+  namespace: dra-webhook-system
+  labels:
+    helm.sh/chart: dra-admission-webhook-0.1.0
+    app.kubernetes.io/name: dra-admission-webhook
+    app.kubernetes.io/instance: dra
+    app.kubernetes.io/version: "main"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: reconciler
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Mi
+---
+# Source: dra-admission-webhook/templates/rbac.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: dra-gpu-nic-webhook
+  labels:
+    helm.sh/chart: dra-admission-webhook-0.1.0
+    app.kubernetes.io/name: dra-admission-webhook
+    app.kubernetes.io/instance: dra
+    app.kubernetes.io/version: "main"
+    app.kubernetes.io/managed-by: Helm
+rules:
+- apiGroups: ["resource.k8s.io"]
+  resources: ["resourceclaimtemplates"]
+  verbs: ["create", "get", "list", "update", "delete"]
+- apiGroups: ["resource.k8s.io"]
+  resources: ["resourceclaims"]
+  verbs: ["get", "list", "update", "delete"]
+- apiGroups: ["resource.k8s.io"]
+  resources: ["resourceslices"]
+  verbs: ["list"]
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get", "watch"]
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["list", "get"]
+- apiGroups: [""]
+  resources: ["nodes"]
+  verbs: ["list", "get"]
+- apiGroups: ["nv-ipam.nvidia.com"]
+  resources: ["cidrpools"]
+  verbs: ["get", "list"]
+---
+# Source: dra-admission-webhook/templates/rbac.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: dra-gpu-nic-webhook
+  labels:
+    helm.sh/chart: dra-admission-webhook-0.1.0
+    app.kubernetes.io/name: dra-admission-webhook
+    app.kubernetes.io/instance: dra
+    app.kubernetes.io/version: "main"
+    app.kubernetes.io/managed-by: Helm
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: dra-gpu-nic-webhook
+subjects:
+- kind: ServiceAccount
+  name: dra-gpu-nic-webhook
+  namespace: dra-webhook-system
+---
+# Source: dra-admission-webhook/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: dra-gpu-nic-webhook
+  namespace: dra-webhook-system
+  labels:
+    helm.sh/chart: dra-admission-webhook-0.1.0
+    app.kubernetes.io/name: dra-admission-webhook
+    app.kubernetes.io/instance: dra
+    app.kubernetes.io/version: "main"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: webhook
+spec:
+  selector:
+    app.kubernetes.io/name: dra-admission-webhook
+    app.kubernetes.io/instance: dra
+    app.kubernetes.io/component: webhook
+  ports:
+  - port: 443
+    targetPort: 8443
+    protocol: TCP
+    name: https
+---
+# Source: dra-admission-webhook/templates/reconciler-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dra-gpu-nic-webhook-reconciler
+  namespace: dra-webhook-system
+  labels:
+    helm.sh/chart: dra-admission-webhook-0.1.0
+    app.kubernetes.io/name: dra-admission-webhook
+    app.kubernetes.io/instance: dra
+    app.kubernetes.io/version: "main"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: reconciler
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: dra-admission-webhook
+      app.kubernetes.io/instance: dra
+      app.kubernetes.io/component: reconciler
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: dra-admission-webhook
+        app.kubernetes.io/instance: dra
+        app.kubernetes.io/component: reconciler
+      annotations:
+        checksum/config: c4c5151f580557f7dd46a4258982ae8e734922260870bf6407ec4f6fbfa269fa
+    spec:
+      serviceAccountName: dra-gpu-nic-webhook
+      containers:
+      - name: reconciler
+        image: ghcr.io/openshift-psap/dra-rail-admission-webhook/reconciler:pr-20
+        imagePullPolicy: Always
+        args:
+        - --config-namespace=dra-webhook-system
+        - --config-name=dra-gpu-nic-webhook-config
+        - --health-port=8080
+        ports:
+        - containerPort: 8080
+          name: health
+          protocol: TCP
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        volumeMounts:
+        - name: state
+          mountPath: /data
+        resources:
+          limits:
+            cpu: 100m
+            memory: 128Mi
+          requests:
+            cpu: 25m
+            memory: 64Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          capabilities:
+            drop:
+            - ALL
+      volumes:
+      - name: state
+        persistentVolumeClaim:
+          claimName: dra-gpu-nic-webhook-reconciler-state
+---
+# Source: dra-admission-webhook/templates/webhook-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dra-gpu-nic-webhook
+  namespace: dra-webhook-system
+  labels:
+    helm.sh/chart: dra-admission-webhook-0.1.0
+    app.kubernetes.io/name: dra-admission-webhook
+    app.kubernetes.io/instance: dra
+    app.kubernetes.io/version: "main"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: webhook
+spec:
+  replicas: 2
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: dra-admission-webhook
+      app.kubernetes.io/instance: dra
+      app.kubernetes.io/component: webhook
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: dra-admission-webhook
+        app.kubernetes.io/instance: dra
+        app.kubernetes.io/component: webhook
+      annotations:
+        checksum/config: c4c5151f580557f7dd46a4258982ae8e734922260870bf6407ec4f6fbfa269fa
+        checksum/tls: 6a18b0afeaad66f58af7efae95242c623e6f24ecb16d10bca8444a0bd4850ee5
+    spec:
+      serviceAccountName: dra-gpu-nic-webhook
+      topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: DoNotSchedule
+        labelSelector:
+          matchLabels:
+            app.kubernetes.io/name: dra-admission-webhook
+            app.kubernetes.io/instance: dra
+            app.kubernetes.io/component: webhook
+      containers:
+      - name: webhook
+        image: ghcr.io/openshift-psap/dra-rail-admission-webhook/webhook:pr-20
+        imagePullPolicy: Always
+        args:
+        - --port=8443
+        - --cert-dir=/certs
+        - --config-namespace=dra-webhook-system
+        - --config-name=dra-gpu-nic-webhook-config
+        ports:
+        - containerPort: 8443
+          name: https
+          protocol: TCP
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8443
+            scheme: HTTPS
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8443
+            scheme: HTTPS
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        volumeMounts:
+        - name: tls-certs
+          mountPath: /certs
+          readOnly: true
+        resources:
+          limits:
+            cpu: 200m
+            memory: 128Mi
+          requests:
+            cpu: 50m
+            memory: 64Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          capabilities:
+            drop:
+            - ALL
+      volumes:
+      - name: tls-certs
+        secret:
+          secretName: dra-gpu-nic-webhook-tls
+---
+# Source: dra-admission-webhook/templates/mutatingwebhookconfiguration.yaml
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: dra-gpu-nic-webhook
+  labels:
+    helm.sh/chart: dra-admission-webhook-0.1.0
+    app.kubernetes.io/name: dra-admission-webhook
+    app.kubernetes.io/instance: dra
+    app.kubernetes.io/version: "main"
+    app.kubernetes.io/managed-by: Helm
+webhooks:
+- name: gpu-nic-pairs.dra.llm-d.io
+  admissionReviewVersions: ["v1"]
+  sideEffects: NoneOnDryRun
+  clientConfig:
+    service:
+      name: dra-gpu-nic-webhook
+      namespace: dra-webhook-system
+      path: /mutate
+      port: 443
+    caBundle: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURIVENDQWdXZ0F3SUJBZ0lRWFZzZk5JdHVXQUhNeU1BaTUyTFdDVEFOQmdrcWhraUc5dzBCQVFzRkFEQVoKTVJjd0ZRWURWUVFERXc1a2NtRXRkMlZpYUc5dmF5MWpZVEFlRncweU5qQTFNak14TkRNd01EbGFGdzB5TnpBMQpNak14TkRNd01EbGFNQmt4RnpBVkJnTlZCQU1URG1SeVlTMTNaV0pvYjI5ckxXTmhNSUlCSWpBTkJna3Foa2lHCjl3MEJBUUVGQUFPQ0FROEFNSUlCQ2dLQ0FRRUFxY2lkZnhESUxpd29lZjlwTVZuUDV3VCtaM1RrYXUwZEU3SG4KMVJlbGlwQ0tJVGVBK2F2ODZBcC9ycWV5a09ianlFTC9VMGwzeFVUUi9iaGJTaUF0T1dwOXN0TXh3MnQ5UjZncwpWL0FQaFY2eFVEU3UyeGVHLzN1UUFPemxTZ3lYd2t3cStEL2p1TUVNdE1BUkFIQW1yWjl1R3FaNjVOSHNXZEduClQxWkRLR2pTQnAxeUFacDNZc28wRFhURGRsZ0FhUWlXUGVuSzcya1VsQmxoTS9vREcvY21KdFJCVmh5blpVdzMKYlRtODVOMGxTU1BGRUZhZkZMNEgzQlgveXVxQlB4eVV6OVRncHVMWnp6TFdESWovU2kvbEthNDJTNnZiYzJuUwpXQjhmb016MGRnNzFHTmJlc2hWYVFIZXhEZWtrY0Z5aSsyWWRxTTNLeFNBQTdpUDVnd0lEQVFBQm8yRXdYekFPCkJnTlZIUThCQWY4RUJBTUNBcVF3SFFZRFZSMGxCQll3RkFZSUt3WUJCUVVIQXdFR0NDc0dBUVVGQndNQ01BOEcKQTFVZEV3RUIvd1FGTUFNQkFmOHdIUVlEVlIwT0JCWUVGRHJIMDRYZjRJdGltVU4zbEN5K0tzTnRpVnJ6TUEwRwpDU3FHU0liM0RRRUJDd1VBQTRJQkFRQUFGeGVZc1doUGd1a1lvL1pWWUt2QzBJVWlmZHhLL3RwbmJyTDg1Q1l3Clp3VHpyMXN2bVBuQXJYUWdsL1pKaHRHbmMvdC96eFo0b3hFaEhZNjFkMVVIdnRTZHF2YVBZRGUzSW1wOVdwSlkKTUpCUVFqVXNxWllhRGNPcHA2MlQvRzhySWkzVFlxd1JYK0pOT1FWNjVscHJJU2dOU2VqMG41SkZLSVFXNFlkUQpxbjdiYWNNL2cyaUV3RERCam92ZWxpYU90Y3BIVS9Ed1ZqT1YvcEhIZ2NGQkh2ZlliYlc1YmtZQUgzN0JkNmpvCmdxa3J5RHRVQUVGNStwcVV6bmNnMWw5K2ZhRGtTMnZreU8zWnpRcWNOSEIzL0dUeHdqeDlWUkZkK25IdzVEancKdUh2cUNnUTF0Z25wQzhiRUx1MlovS29NZWE4U0p1Ukh3cTBEVkxaZ0VrNlIKLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
+  rules:
+  - operations: ["CREATE"]
+    apiGroups: [""]
+    apiVersions: ["v1"]
+    resources: ["pods"]
+  namespaceSelector:
+    matchLabels:
+      dra.llm-d.io/webhook-enabled: "true"
+  failurePolicy: Fail
+  reinvocationPolicy: IfNeeded
+  timeoutSeconds: 10
+- name: ext-resources.dra.llm-d.io
+  admissionReviewVersions: ["v1"]
+  sideEffects: NoneOnDryRun
+  clientConfig:
+    service:
+      name: dra-gpu-nic-webhook
+      namespace: dra-webhook-system
+      path: /mutate-ext
+      port: 443
+    caBundle: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURIVENDQWdXZ0F3SUJBZ0lRWFZzZk5JdHVXQUhNeU1BaTUyTFdDVEFOQmdrcWhraUc5dzBCQVFzRkFEQVoKTVJjd0ZRWURWUVFERXc1a2NtRXRkMlZpYUc5dmF5MWpZVEFlRncweU5qQTFNak14TkRNd01EbGFGdzB5TnpBMQpNak14TkRNd01EbGFNQmt4RnpBVkJnTlZCQU1URG1SeVlTMTNaV0pvYjI5ckxXTmhNSUlCSWpBTkJna3Foa2lHCjl3MEJBUUVGQUFPQ0FROEFNSUlCQ2dLQ0FRRUFxY2lkZnhESUxpd29lZjlwTVZuUDV3VCtaM1RrYXUwZEU3SG4KMVJlbGlwQ0tJVGVBK2F2ODZBcC9ycWV5a09ianlFTC9VMGwzeFVUUi9iaGJTaUF0T1dwOXN0TXh3MnQ5UjZncwpWL0FQaFY2eFVEU3UyeGVHLzN1UUFPemxTZ3lYd2t3cStEL2p1TUVNdE1BUkFIQW1yWjl1R3FaNjVOSHNXZEduClQxWkRLR2pTQnAxeUFacDNZc28wRFhURGRsZ0FhUWlXUGVuSzcya1VsQmxoTS9vREcvY21KdFJCVmh5blpVdzMKYlRtODVOMGxTU1BGRUZhZkZMNEgzQlgveXVxQlB4eVV6OVRncHVMWnp6TFdESWovU2kvbEthNDJTNnZiYzJuUwpXQjhmb016MGRnNzFHTmJlc2hWYVFIZXhEZWtrY0Z5aSsyWWRxTTNLeFNBQTdpUDVnd0lEQVFBQm8yRXdYekFPCkJnTlZIUThCQWY4RUJBTUNBcVF3SFFZRFZSMGxCQll3RkFZSUt3WUJCUVVIQXdFR0NDc0dBUVVGQndNQ01BOEcKQTFVZEV3RUIvd1FGTUFNQkFmOHdIUVlEVlIwT0JCWUVGRHJIMDRYZjRJdGltVU4zbEN5K0tzTnRpVnJ6TUEwRwpDU3FHU0liM0RRRUJDd1VBQTRJQkFRQUFGeGVZc1doUGd1a1lvL1pWWUt2QzBJVWlmZHhLL3RwbmJyTDg1Q1l3Clp3VHpyMXN2bVBuQXJYUWdsL1pKaHRHbmMvdC96eFo0b3hFaEhZNjFkMVVIdnRTZHF2YVBZRGUzSW1wOVdwSlkKTUpCUVFqVXNxWllhRGNPcHA2MlQvRzhySWkzVFlxd1JYK0pOT1FWNjVscHJJU2dOU2VqMG41SkZLSVFXNFlkUQpxbjdiYWNNL2cyaUV3RERCam92ZWxpYU90Y3BIVS9Ed1ZqT1YvcEhIZ2NGQkh2ZlliYlc1YmtZQUgzN0JkNmpvCmdxa3J5RHRVQUVGNStwcVV6bmNnMWw5K2ZhRGtTMnZreU8zWnpRcWNOSEIzL0dUeHdqeDlWUkZkK25IdzVEancKdUh2cUNnUTF0Z25wQzhiRUx1MlovS29NZWE4U0p1Ukh3cTBEVkxaZ0VrNlIKLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
+  rules:
+  - operations: ["CREATE"]
+    apiGroups: [""]
+    apiVersions: ["v1"]
+    resources: ["pods"]
+  namespaceSelector:
+    matchExpressions:
+    - key: kubernetes.io/metadata.name
+      operator: NotIn
+      values:
+      - "kube-system"
+      - "kube-public"
+      - "kube-node-lease"
+      - "openshift-apiserver"
+      - "openshift-controller-manager"
+      - "openshift-etcd"
+      - "openshift-kube-apiserver"
+      - "openshift-kube-controller-manager"
+      - "openshift-kube-scheduler"
+      - "openshift-machine-api"
+      - "openshift-machine-config-operator"
+      - "openshift-monitoring"
+      - "openshift-network-operator"
+      - "openshift-sdn"
+      - "openshift-ovn-kubernetes"
+      - "nvidia-gpu-operator"
+      - "nvidia-network-operator"
+  failurePolicy: Ignore
+  reinvocationPolicy: IfNeeded
+  timeoutSeconds: 10
+

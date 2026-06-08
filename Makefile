@@ -1,5 +1,5 @@
 GO ?= go1.26.3
-IMAGE_REPO ?= ghcr.io/thameem-abbas/composite-dra-driver
+IMAGE_REPO ?= ghcr.io/openshift-psap/composite-dra-driver
 IMAGE_TAG ?= latest
 
 .PHONY: build build-driver build-webhook test image image-driver image-webhook deploy clean

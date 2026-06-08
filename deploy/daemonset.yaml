@@ -40,7 +40,7 @@ spec:
         - name: ghcr-pull
       containers:
         - name: driver
-          image: ghcr.io/thameem-abbas/composite-dra-driver:latest
+          image: ghcr.io/openshift-psap/composite-dra-driver:latest
           imagePullPolicy: Always
           args:
             - --config=/etc/composite-dra/config.yaml

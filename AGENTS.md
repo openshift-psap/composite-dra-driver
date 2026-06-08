@@ -103,7 +103,7 @@ oc logs -l app.kubernetes.io/component=driver \
 - Push to main → builds + pushes `latest` images to ghcr.io
 - PR → runs `go vet` + `go test -race` + `go build` (no push)
 - Comment `/build-approved` on PR → builds `pr-<number>` tagged images (maintainer gate)
-- Images: `ghcr.io/thameem-abbas/composite-dra-{driver,webhook}:<tag>`
+- Images: `ghcr.io/openshift-psap/composite-dra-{driver,webhook}:<tag>`
 - Private repo — cluster needs `ghcr-pull` secret with classic PAT (`read:packages` + `repo` scopes)
 
 ## Open Issues to Be Aware Of

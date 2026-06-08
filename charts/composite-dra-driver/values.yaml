@@ -3,7 +3,7 @@ namespace: composite-dra-system
 driver:
   name: "composite.dra.example.io"
   image:
-    repository: ghcr.io/thameem-abbas/composite-dra-driver
+    repository: ghcr.io/openshift-psap/composite-dra-driver
     tag: latest
     pullPolicy: Always
   resources:
@@ -24,7 +24,7 @@ webhook:
   #   disabled: never deploy (e.g. K8s 1.35 with DRAExtendedResource manually enabled)
   mode: auto
   image:
-    repository: ghcr.io/thameem-abbas/composite-dra-webhook
+    repository: ghcr.io/openshift-psap/composite-dra-webhook
     tag: latest
     pullPolicy: Always
   replicas: 2

@@ -1,0 +1,3402 @@
+apiVersion: v1
+items:
+- apiVersion: resource.k8s.io/v1
+  kind: ResourceSlice
+  metadata:
+    creationTimestamp: "2026-04-05T16:01:36Z"
+    generateName: psap-gpu-xhnvx-master-0-dra.net-
+    generation: 1
+    name: psap-gpu-xhnvx-master-0-dra.net-c8bx5
+    ownerReferences:
+    - apiVersion: v1
+      controller: true
+      kind: Node
+      name: psap-gpu-xhnvx-master-0
+      uid: 2d3ded70-17e4-4483-b5d6-dbd938ae1052
+    resourceVersion: "523994292"
+    uid: e42ddfbb-22c4-4fa6-bc58-069aff741120
+  spec:
+    devices:
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: br-int
+        dra.net/mac:
+          string: ca:7c:bd:24:3b:32
+        dra.net/mtu:
+          int: 1400
+        dra.net/rdma:
+          bool: false
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: down
+        dra.net/type:
+          string: openvswitch
+        dra.net/virtual:
+          bool: true
+      name: br-int
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: genev_sys_6081
+        dra.net/mac:
+          string: da:3b:eb:1a:4f:85
+        dra.net/mtu:
+          int: 65000
+        dra.net/rdma:
+          bool: false
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: unknown
+        dra.net/type:
+          string: geneve
+        dra.net/virtual:
+          bool: true
+      name: net-m5sw4zlwl5zxs427gyydqmi
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: ovn-k8s-mp0
+        dra.net/ipv4:
+          string: 10.128.0.2/23
+        dra.net/mac:
+          string: 36:0b:c5:58:ea:2f
+        dra.net/mtu:
+          int: 1400
+        dra.net/rdma:
+          bool: false
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: unknown
+        dra.net/type:
+          string: openvswitch
+        dra.net/virtual:
+          bool: true
+      name: ovn-k8s-mp0
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: ovs-system
+        dra.net/mac:
+          string: 66:82:e4:c0:29:52
+        dra.net/mtu:
+          int: 1500
+        dra.net/rdma:
+          bool: false
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: down
+        dra.net/type:
+          string: openvswitch
+        dra.net/virtual:
+          bool: true
+      name: ovs-system
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: ens3
+        dra.net/mac:
+          string: 02:00:0c:9d:0f:fb
+        dra.net/mtu:
+          int: 1500
+        dra.net/pciAddress:
+          string: "0000:00:03.0"
+        dra.net/pciDevice:
+          string: Virtio network device
+        dra.net/pciSubsystem:
+          string: "0001"
+        dra.net/pciVendor:
+          string: Red Hat, Inc.
+        dra.net/rdma:
+          bool: false
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: up
+        dra.net/type:
+          string: device
+        dra.net/virtual:
+          bool: false
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:00
+      name: pci-0000-00-03-0
+    driver: dra.net
+    nodeName: psap-gpu-xhnvx-master-0
+    pool:
+      generation: 1
+      name: psap-gpu-xhnvx-master-0
+      resourceSliceCount: 1
+- apiVersion: resource.k8s.io/v1
+  kind: ResourceSlice
+  metadata:
+    creationTimestamp: "2026-05-28T09:35:45Z"
+    generateName: psap-gpu-xhnvx-storage-q6lkl-dra.net-
+    generation: 1
+    name: psap-gpu-xhnvx-storage-q6lkl-dra.net-sc9v4
+    ownerReferences:
+    - apiVersion: v1
+      controller: true
+      kind: Node
+      name: psap-gpu-xhnvx-storage-q6lkl
+      uid: 53cd7eea-9383-4a41-91cf-e904bdc0c14a
+    resourceVersion: "756767077"
+    uid: 3bbd69eb-73fd-4793-a3a5-d9299e2a0035
+  spec:
+    devices:
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: br-int
+        dra.net/mac:
+          string: 22:6f:06:42:f1:32
+        dra.net/mtu:
+          int: 1400
+        dra.net/rdma:
+          bool: false
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: down
+        dra.net/type:
+          string: openvswitch
+        dra.net/virtual:
+          bool: true
+      name: br-int
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: genev_sys_6081
+        dra.net/mac:
+          string: 7e:be:e1:46:a5:d9
+        dra.net/mtu:
+          int: 65000
+        dra.net/rdma:
+          bool: false
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: unknown
+        dra.net/type:
+          string: geneve
+        dra.net/virtual:
+          bool: true
+      name: net-m5sw4zlwl5zxs427gyydqmi
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: ovn-k8s-mp0
+        dra.net/ipv4:
+          string: 10.128.2.2/23
+        dra.net/mac:
+          string: 72:2c:df:be:43:6e
+        dra.net/mtu:
+          int: 1400
+        dra.net/rdma:
+          bool: false
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: unknown
+        dra.net/type:
+          string: openvswitch
+        dra.net/virtual:
+          bool: true
+      name: ovn-k8s-mp0
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: ovs-system
+        dra.net/mac:
+          string: 1a:7f:e8:f2:7f:be
+        dra.net/mtu:
+          int: 1500
+        dra.net/rdma:
+          bool: false
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: down
+        dra.net/type:
+          string: openvswitch
+        dra.net/virtual:
+          bool: true
+      name: ovs-system
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: ens3
+        dra.net/mac:
+          string: 02:00:02:9a:08:a0
+        dra.net/mtu:
+          int: 1500
+        dra.net/pciAddress:
+          string: "0000:00:03.0"
+        dra.net/pciDevice:
+          string: Virtio network device
+        dra.net/pciSubsystem:
+          string: "0001"
+        dra.net/pciVendor:
+          string: Red Hat, Inc.
+        dra.net/rdma:
+          bool: false
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: up
+        dra.net/type:
+          string: device
+        dra.net/virtual:
+          bool: false
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:00
+      name: pci-0000-00-03-0
+    driver: dra.net
+    nodeName: psap-gpu-xhnvx-storage-q6lkl
+    pool:
+      generation: 1
+      name: psap-gpu-xhnvx-storage-q6lkl
+      resourceSliceCount: 1
+- apiVersion: resource.k8s.io/v1
+  kind: ResourceSlice
+  metadata:
+    creationTimestamp: "2026-05-28T09:32:50Z"
+    generateName: psap-gpu-xhnvx-worker-1-n7mkr-dra.net-
+    generation: 1
+    name: psap-gpu-xhnvx-worker-1-n7mkr-dra.net-hkg6s
+    ownerReferences:
+    - apiVersion: v1
+      controller: true
+      kind: Node
+      name: psap-gpu-xhnvx-worker-1-n7mkr
+      uid: 38e4d765-1abd-4a4d-8f27-8b7b1f639524
+    resourceVersion: "756760181"
+    uid: ef577f28-c06b-4bc0-99ba-183b0c91da5d
+  spec:
+    devices:
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: br-int
+        dra.net/mac:
+          string: 6a:bd:b4:8a:45:ef
+        dra.net/mtu:
+          int: 1400
+        dra.net/rdma:
+          bool: false
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: down
+        dra.net/type:
+          string: openvswitch
+        dra.net/virtual:
+          bool: true
+      name: br-int
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: genev_sys_6081
+        dra.net/mac:
+          string: 32:2b:a4:b1:36:30
+        dra.net/mtu:
+          int: 65000
+        dra.net/rdma:
+          bool: false
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: unknown
+        dra.net/type:
+          string: geneve
+        dra.net/virtual:
+          bool: true
+      name: net-m5sw4zlwl5zxs427gyydqmi
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: ovn-k8s-mp0
+        dra.net/ipv4:
+          string: 10.129.0.2/23
+        dra.net/mac:
+          string: 36:c9:0a:ed:73:8f
+        dra.net/mtu:
+          int: 1400
+        dra.net/rdma:
+          bool: false
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: unknown
+        dra.net/type:
+          string: openvswitch
+        dra.net/virtual:
+          bool: true
+      name: ovn-k8s-mp0
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: ovs-system
+        dra.net/mac:
+          string: 7e:e1:d4:00:43:cc
+        dra.net/mtu:
+          int: 1500
+        dra.net/rdma:
+          bool: false
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: down
+        dra.net/type:
+          string: openvswitch
+        dra.net/virtual:
+          bool: true
+      name: ovs-system
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: ens3
+        dra.net/mac:
+          string: 02:00:04:9d:0f:f9
+        dra.net/mtu:
+          int: 1500
+        dra.net/pciAddress:
+          string: "0000:00:03.0"
+        dra.net/pciDevice:
+          string: Virtio network device
+        dra.net/pciSubsystem:
+          string: "0001"
+        dra.net/pciVendor:
+          string: Red Hat, Inc.
+        dra.net/rdma:
+          bool: false
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: up
+        dra.net/type:
+          string: device
+        dra.net/virtual:
+          bool: false
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:00
+      name: pci-0000-00-03-0
+    driver: dra.net
+    nodeName: psap-gpu-xhnvx-worker-1-n7mkr
+    pool:
+      generation: 1
+      name: psap-gpu-xhnvx-worker-1-n7mkr
+      resourceSliceCount: 1
+- apiVersion: resource.k8s.io/v1
+  kind: ResourceSlice
+  metadata:
+    creationTimestamp: "2026-05-28T09:42:22Z"
+    generateName: psap-gpu-xhnvx-worker-3-6bsjp-compute-domain.nvidia.com-
+    generation: 1
+    name: psap-gpu-xhnvx-worker-3-6bsjp-compute-domain.nvidia.com-cq4g9
+    ownerReferences:
+    - apiVersion: v1
+      controller: true
+      kind: Node
+      name: psap-gpu-xhnvx-worker-3-6bsjp
+      uid: 6ca0f96c-08c0-4d03-8ee4-42aeab47599a
+    resourceVersion: "756780383"
+    uid: 5004cb94-5166-4b3c-bdbb-0a6d0eb3fe3b
+  spec:
+    devices:
+    - attributes:
+        id:
+          int: 0
+        type:
+          string: channel
+      name: channel-0
+    - attributes:
+        id:
+          int: 0
+        type:
+          string: daemon
+      name: daemon-0
+    driver: compute-domain.nvidia.com
+    nodeName: psap-gpu-xhnvx-worker-3-6bsjp
+    pool:
+      generation: 1
+      name: psap-gpu-xhnvx-worker-3-6bsjp
+      resourceSliceCount: 1
+- apiVersion: resource.k8s.io/v1
+  kind: ResourceSlice
+  metadata:
+    creationTimestamp: "2026-05-28T09:42:14Z"
+    generateName: psap-gpu-xhnvx-worker-3-6bsjp-dra.net-
+    generation: 53
+    name: psap-gpu-xhnvx-worker-3-6bsjp-dra.net-c7plc
+    ownerReferences:
+    - apiVersion: v1
+      controller: true
+      kind: Node
+      name: psap-gpu-xhnvx-worker-3-6bsjp
+      uid: 6ca0f96c-08c0-4d03-8ee4-42aeab47599a
+    resourceVersion: "783080475"
+    uid: 57e3627f-2170-4fe9-8b00-e550295464bc
+  spec:
+    devices:
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: br-int
+        dra.net/mac:
+          string: 4e:27:39:a3:47:10
+        dra.net/mtu:
+          int: 1400
+        dra.net/rdma:
+          bool: false
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: down
+        dra.net/type:
+          string: openvswitch
+        dra.net/virtual:
+          bool: true
+      name: br-int
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: genev_sys_6081
+        dra.net/mac:
+          string: 2a:83:27:e7:61:0f
+        dra.net/mtu:
+          int: 65000
+        dra.net/rdma:
+          bool: false
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: unknown
+        dra.net/type:
+          string: geneve
+        dra.net/virtual:
+          bool: true
+      name: net-m5sw4zlwl5zxs427gyydqmi
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: ovn-k8s-mp0
+        dra.net/ipv4:
+          string: 10.130.0.2/23
+        dra.net/mac:
+          string: 4a:f0:44:06:f5:12
+        dra.net/mtu:
+          int: 1400
+        dra.net/rdma:
+          bool: false
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: unknown
+        dra.net/type:
+          string: openvswitch
+        dra.net/virtual:
+          bool: true
+      name: ovn-k8s-mp0
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: ovs-system
+        dra.net/mac:
+          string: 76:92:ff:86:47:20
+        dra.net/mtu:
+          int: 1500
+        dra.net/rdma:
+          bool: false
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: down
+        dra.net/type:
+          string: openvswitch
+        dra.net/virtual:
+          bool: true
+      name: ovs-system
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: enp0s3
+        dra.net/mac:
+          string: 02:00:04:9a:08:a0
+        dra.net/mtu:
+          int: 1500
+        dra.net/pciAddress:
+          string: "0000:00:03.0"
+        dra.net/pciDevice:
+          string: Virtio network device
+        dra.net/pciSubsystem:
+          string: "0001"
+        dra.net/pciVendor:
+          string: Red Hat, Inc.
+        dra.net/rdma:
+          bool: false
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: up
+        dra.net/type:
+          string: device
+        dra.net/virtual:
+          bool: false
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:00
+      name: pci-0000-00-03-0
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: enp163s0
+        dra.net/ipv4:
+          string: 10.0.0.5/16
+        dra.net/mac:
+          string: 02:00:02:bc:50:f4
+        dra.net/mtu:
+          int: 9000
+        dra.net/numaNode:
+          int: 0
+        dra.net/pciAddress:
+          string: 0000:a3:00.0
+        dra.net/pciDevice:
+          string: ConnectX Family mlx5Gen Virtual Function
+        dra.net/pciSubsystem:
+          string: "0127"
+        dra.net/pciVendor:
+          string: Mellanox Technologies
+        dra.net/rdma:
+          bool: true
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: up
+        dra.net/type:
+          string: device
+        dra.net/virtual:
+          bool: false
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:a0
+      name: pci-0000-a3-00-0
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: enp173s0
+        dra.net/ipv4:
+          string: 10.1.0.6/16
+        dra.net/mac:
+          string: 02:00:03:bc:50:f5
+        dra.net/mtu:
+          int: 9000
+        dra.net/numaNode:
+          int: 0
+        dra.net/pciAddress:
+          string: 0000:ad:00.0
+        dra.net/pciDevice:
+          string: ConnectX Family mlx5Gen Virtual Function
+        dra.net/pciSubsystem:
+          string: "0127"
+        dra.net/pciVendor:
+          string: Mellanox Technologies
+        dra.net/rdma:
+          bool: true
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: up
+        dra.net/type:
+          string: device
+        dra.net/virtual:
+          bool: false
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:aa
+      name: pci-0000-ad-00-0
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: enp183s0
+        dra.net/ipv4:
+          string: 10.2.0.6/16
+        dra.net/mac:
+          string: 02:00:03:bc:50:f9
+        dra.net/mtu:
+          int: 9000
+        dra.net/numaNode:
+          int: 0
+        dra.net/pciAddress:
+          string: 0000:b7:00.0
+        dra.net/pciDevice:
+          string: ConnectX Family mlx5Gen Virtual Function
+        dra.net/pciSubsystem:
+          string: "0127"
+        dra.net/pciVendor:
+          string: Mellanox Technologies
+        dra.net/rdma:
+          bool: true
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: up
+        dra.net/type:
+          string: device
+        dra.net/virtual:
+          bool: false
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:b4
+      name: pci-0000-b7-00-0
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: enp193s0
+        dra.net/ipv4:
+          string: 10.3.0.6/16
+        dra.net/mac:
+          string: 02:00:03:bc:50:fb
+        dra.net/mtu:
+          int: 9000
+        dra.net/numaNode:
+          int: 0
+        dra.net/pciAddress:
+          string: 0000:c1:00.0
+        dra.net/pciDevice:
+          string: ConnectX Family mlx5Gen Virtual Function
+        dra.net/pciSubsystem:
+          string: "0127"
+        dra.net/pciVendor:
+          string: Mellanox Technologies
+        dra.net/rdma:
+          bool: true
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: up
+        dra.net/type:
+          string: device
+        dra.net/virtual:
+          bool: false
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:be
+      name: pci-0000-c1-00-0
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: enp203s0
+        dra.net/ipv4:
+          string: 10.4.0.5/16
+        dra.net/mac:
+          string: 02:00:02:bc:50:fc
+        dra.net/mtu:
+          int: 9000
+        dra.net/numaNode:
+          int: 1
+        dra.net/pciAddress:
+          string: 0000:cb:00.0
+        dra.net/pciDevice:
+          string: ConnectX Family mlx5Gen Virtual Function
+        dra.net/pciSubsystem:
+          string: "0127"
+        dra.net/pciVendor:
+          string: Mellanox Technologies
+        dra.net/rdma:
+          bool: true
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: up
+        dra.net/type:
+          string: device
+        dra.net/virtual:
+          bool: false
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:c8
+      name: pci-0000-cb-00-0
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: enp213s0
+        dra.net/ipv4:
+          string: 10.5.0.5/16
+        dra.net/mac:
+          string: 02:00:02:bc:50:f6
+        dra.net/mtu:
+          int: 9000
+        dra.net/numaNode:
+          int: 1
+        dra.net/pciAddress:
+          string: 0000:d5:00.0
+        dra.net/pciDevice:
+          string: ConnectX Family mlx5Gen Virtual Function
+        dra.net/pciSubsystem:
+          string: "0127"
+        dra.net/pciVendor:
+          string: Mellanox Technologies
+        dra.net/rdma:
+          bool: true
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: up
+        dra.net/type:
+          string: device
+        dra.net/virtual:
+          bool: false
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:d2
+      name: pci-0000-d5-00-0
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: enp223s0
+        dra.net/ipv4:
+          string: 10.6.0.5/16
+        dra.net/mac:
+          string: 02:00:02:bc:50:f8
+        dra.net/mtu:
+          int: 9000
+        dra.net/numaNode:
+          int: 1
+        dra.net/pciAddress:
+          string: 0000:df:00.0
+        dra.net/pciDevice:
+          string: ConnectX Family mlx5Gen Virtual Function
+        dra.net/pciSubsystem:
+          string: "0127"
+        dra.net/pciVendor:
+          string: Mellanox Technologies
+        dra.net/rdma:
+          bool: true
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: up
+        dra.net/type:
+          string: device
+        dra.net/virtual:
+          bool: false
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:dc
+      name: pci-0000-df-00-0
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: enp233s0
+        dra.net/ipv4:
+          string: 10.7.0.5/16
+        dra.net/mac:
+          string: 02:00:02:bc:50:fd
+        dra.net/mtu:
+          int: 9000
+        dra.net/numaNode:
+          int: 1
+        dra.net/pciAddress:
+          string: 0000:e9:00.0
+        dra.net/pciDevice:
+          string: ConnectX Family mlx5Gen Virtual Function
+        dra.net/pciSubsystem:
+          string: "0127"
+        dra.net/pciVendor:
+          string: Mellanox Technologies
+        dra.net/rdma:
+          bool: true
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: up
+        dra.net/type:
+          string: device
+        dra.net/virtual:
+          bool: false
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:e6
+      name: pci-0000-e9-00-0
+    driver: dra.net
+    nodeName: psap-gpu-xhnvx-worker-3-6bsjp
+    pool:
+      generation: 1
+      name: psap-gpu-xhnvx-worker-3-6bsjp
+      resourceSliceCount: 1
+- apiVersion: resource.k8s.io/v1
+  kind: ResourceSlice
+  metadata:
+    creationTimestamp: "2026-05-28T09:42:26Z"
+    generateName: psap-gpu-xhnvx-worker-3-6bsjp-gpu.nvidia.com-
+    generation: 1
+    name: psap-gpu-xhnvx-worker-3-6bsjp-gpu.nvidia.com-9sdrp
+    ownerReferences:
+    - apiVersion: v1
+      controller: true
+      kind: Node
+      name: psap-gpu-xhnvx-worker-3-6bsjp
+      uid: 6ca0f96c-08c0-4d03-8ee4-42aeab47599a
+    resourceVersion: "756780498"
+    uid: 3c48f3d9-b05f-49b1-b658-723d8253237a
+  spec:
+    devices:
+    - attributes:
+        addressingMode:
+          string: HMM
+        architecture:
+          string: Hopper
+        brand:
+          string: Nvidia
+        cudaComputeCapability:
+          version: 9.0.0
+        cudaDriverVersion:
+          version: 13.0.0
+        driverVersion:
+          version: 580.126.20
+        productName:
+          string: NVIDIA H100 80GB HBM3
+        resource.kubernetes.io/pciBusID:
+          string: 0000:c2:00.0
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:be
+        type:
+          string: gpu
+        uuid:
+          string: GPU-ebe01fc2-0157-3040-d814-07c616e0df88
+      capacity:
+        memory:
+          value: 81559Mi
+      name: gpu-4
+    - attributes:
+        addressingMode:
+          string: HMM
+        architecture:
+          string: Hopper
+        brand:
+          string: Nvidia
+        cudaComputeCapability:
+          version: 9.0.0
+        cudaDriverVersion:
+          version: 13.0.0
+        driverVersion:
+          version: 580.126.20
+        productName:
+          string: NVIDIA H100 80GB HBM3
+        resource.kubernetes.io/pciBusID:
+          string: 0000:cc:00.0
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:c8
+        type:
+          string: gpu
+        uuid:
+          string: GPU-0a6fafa0-449a-715c-ac08-0ce92765e08b
+      capacity:
+        memory:
+          value: 81559Mi
+      name: gpu-3
+    - attributes:
+        addressingMode:
+          string: HMM
+        architecture:
+          string: Hopper
+        brand:
+          string: Nvidia
+        cudaComputeCapability:
+          version: 9.0.0
+        cudaDriverVersion:
+          version: 13.0.0
+        driverVersion:
+          version: 580.126.20
+        productName:
+          string: NVIDIA H100 80GB HBM3
+        resource.kubernetes.io/pciBusID:
+          string: 0000:d6:00.0
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:d2
+        type:
+          string: gpu
+        uuid:
+          string: GPU-01d38fb7-bac7-58d5-2924-b5f59fcdb28e
+      capacity:
+        memory:
+          value: 81559Mi
+      name: gpu-2
+    - attributes:
+        addressingMode:
+          string: HMM
+        architecture:
+          string: Hopper
+        brand:
+          string: Nvidia
+        cudaComputeCapability:
+          version: 9.0.0
+        cudaDriverVersion:
+          version: 13.0.0
+        driverVersion:
+          version: 580.126.20
+        productName:
+          string: NVIDIA H100 80GB HBM3
+        resource.kubernetes.io/pciBusID:
+          string: 0000:e0:00.0
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:dc
+        type:
+          string: gpu
+        uuid:
+          string: GPU-2a191f2f-8847-4ec9-2e4a-6ee275a8b783
+      capacity:
+        memory:
+          value: 81559Mi
+      name: gpu-1
+    - attributes:
+        addressingMode:
+          string: HMM
+        architecture:
+          string: Hopper
+        brand:
+          string: Nvidia
+        cudaComputeCapability:
+          version: 9.0.0
+        cudaDriverVersion:
+          version: 13.0.0
+        driverVersion:
+          version: 580.126.20
+        productName:
+          string: NVIDIA H100 80GB HBM3
+        resource.kubernetes.io/pciBusID:
+          string: 0000:ea:00.0
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:e6
+        type:
+          string: gpu
+        uuid:
+          string: GPU-4b8a5df7-5070-ad76-6881-da2c597f93ea
+      capacity:
+        memory:
+          value: 81559Mi
+      name: gpu-0
+    - attributes:
+        addressingMode:
+          string: HMM
+        architecture:
+          string: Hopper
+        brand:
+          string: Nvidia
+        cudaComputeCapability:
+          version: 9.0.0
+        cudaDriverVersion:
+          version: 13.0.0
+        driverVersion:
+          version: 580.126.20
+        productName:
+          string: NVIDIA H100 80GB HBM3
+        resource.kubernetes.io/pciBusID:
+          string: 0000:a4:00.0
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:a0
+        type:
+          string: gpu
+        uuid:
+          string: GPU-7c664fc3-d4bd-155b-a21f-904384dae0f7
+      capacity:
+        memory:
+          value: 81559Mi
+      name: gpu-7
+    - attributes:
+        addressingMode:
+          string: HMM
+        architecture:
+          string: Hopper
+        brand:
+          string: Nvidia
+        cudaComputeCapability:
+          version: 9.0.0
+        cudaDriverVersion:
+          version: 13.0.0
+        driverVersion:
+          version: 580.126.20
+        productName:
+          string: NVIDIA H100 80GB HBM3
+        resource.kubernetes.io/pciBusID:
+          string: 0000:ae:00.0
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:aa
+        type:
+          string: gpu
+        uuid:
+          string: GPU-45ba3fca-dc7d-5fdb-516a-6879a11e6c06
+      capacity:
+        memory:
+          value: 81559Mi
+      name: gpu-6
+    - attributes:
+        addressingMode:
+          string: HMM
+        architecture:
+          string: Hopper
+        brand:
+          string: Nvidia
+        cudaComputeCapability:
+          version: 9.0.0
+        cudaDriverVersion:
+          version: 13.0.0
+        driverVersion:
+          version: 580.126.20
+        productName:
+          string: NVIDIA H100 80GB HBM3
+        resource.kubernetes.io/pciBusID:
+          string: 0000:b8:00.0
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:b4
+        type:
+          string: gpu
+        uuid:
+          string: GPU-c8c60c68-2a32-064c-fb36-c05ec2987b5f
+      capacity:
+        memory:
+          value: 81559Mi
+      name: gpu-5
+    driver: gpu.nvidia.com
+    nodeName: psap-gpu-xhnvx-worker-3-6bsjp
+    pool:
+      generation: 1
+      name: psap-gpu-xhnvx-worker-3-6bsjp
+      resourceSliceCount: 1
+- apiVersion: resource.k8s.io/v1
+  kind: ResourceSlice
+  metadata:
+    creationTimestamp: "2026-06-02T16:41:21Z"
+    generateName: psap-gpu-xhnvx-worker-3-db7jp-compute-domain.nvidia.com-
+    generation: 1
+    name: psap-gpu-xhnvx-worker-3-db7jp-compute-domain.nvidia.com-dn2zw
+    ownerReferences:
+    - apiVersion: v1
+      controller: true
+      kind: Node
+      name: psap-gpu-xhnvx-worker-3-db7jp
+      uid: 19626a4b-18e9-46ca-a356-8f3d64c9e159
+    resourceVersion: "776898357"
+    uid: bf8a27d3-c6b8-41ea-9ac8-aba2657564d0
+  spec:
+    devices:
+    - attributes:
+        id:
+          int: 0
+        type:
+          string: channel
+      name: channel-0
+    - attributes:
+        id:
+          int: 0
+        type:
+          string: daemon
+      name: daemon-0
+    driver: compute-domain.nvidia.com
+    nodeName: psap-gpu-xhnvx-worker-3-db7jp
+    pool:
+      generation: 1
+      name: psap-gpu-xhnvx-worker-3-db7jp
+      resourceSliceCount: 1
+- apiVersion: resource.k8s.io/v1
+  kind: ResourceSlice
+  metadata:
+    creationTimestamp: "2026-06-02T16:41:16Z"
+    generateName: psap-gpu-xhnvx-worker-3-db7jp-dra.net-
+    generation: 14
+    name: psap-gpu-xhnvx-worker-3-db7jp-dra.net-q8nql
+    ownerReferences:
+    - apiVersion: v1
+      controller: true
+      kind: Node
+      name: psap-gpu-xhnvx-worker-3-db7jp
+      uid: 19626a4b-18e9-46ca-a356-8f3d64c9e159
+    resourceVersion: "777938897"
+    uid: 09dfb621-859c-4a0d-a200-afb00a266816
+  spec:
+    devices:
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: br-int
+        dra.net/mac:
+          string: de:31:53:38:8b:23
+        dra.net/mtu:
+          int: 1400
+        dra.net/rdma:
+          bool: false
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: down
+        dra.net/type:
+          string: openvswitch
+        dra.net/virtual:
+          bool: true
+      name: br-int
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: genev_sys_6081
+        dra.net/mac:
+          string: 12:ea:3e:c7:dc:12
+        dra.net/mtu:
+          int: 65000
+        dra.net/rdma:
+          bool: false
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: unknown
+        dra.net/type:
+          string: geneve
+        dra.net/virtual:
+          bool: true
+      name: net-m5sw4zlwl5zxs427gyydqmi
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: ovn-k8s-mp0
+        dra.net/ipv4:
+          string: 10.131.0.2/23
+        dra.net/mac:
+          string: 0a:58:0a:83:00:02
+        dra.net/mtu:
+          int: 1400
+        dra.net/rdma:
+          bool: false
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: unknown
+        dra.net/type:
+          string: openvswitch
+        dra.net/virtual:
+          bool: true
+      name: ovn-k8s-mp0
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: ovs-system
+        dra.net/mac:
+          string: ae:0e:ac:f3:ec:2a
+        dra.net/mtu:
+          int: 1500
+        dra.net/rdma:
+          bool: false
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: down
+        dra.net/type:
+          string: openvswitch
+        dra.net/virtual:
+          bool: true
+      name: ovs-system
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: enp0s3
+        dra.net/mac:
+          string: 02:00:08:9a:08:a0
+        dra.net/mtu:
+          int: 1500
+        dra.net/pciAddress:
+          string: "0000:03:00.0"
+        dra.net/pciDevice:
+          string: Virtio 1.0 network device
+        dra.net/pciSubsystem:
+          string: "1100"
+        dra.net/pciVendor:
+          string: Red Hat, Inc.
+        dra.net/rdma:
+          bool: false
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: up
+        dra.net/type:
+          string: device
+        dra.net/virtual:
+          bool: false
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:00
+      name: pci-0000-03-00-0
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: enp163s0
+        dra.net/ipv4:
+          string: 10.0.0.4/16
+        dra.net/mac:
+          string: 02:00:01:bc:50:f4
+        dra.net/mtu:
+          int: 9000
+        dra.net/numaNode:
+          int: 0
+        dra.net/pciAddress:
+          string: 0000:a3:00.0
+        dra.net/pciDevice:
+          string: ConnectX Family mlx5Gen Virtual Function
+        dra.net/pciSubsystem:
+          string: "0127"
+        dra.net/pciVendor:
+          string: Mellanox Technologies
+        dra.net/rdma:
+          bool: true
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: up
+        dra.net/type:
+          string: device
+        dra.net/virtual:
+          bool: false
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:a0
+      name: pci-0000-a3-00-0
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: enp173s0
+        dra.net/ipv4:
+          string: 10.1.0.5/16
+        dra.net/mac:
+          string: 02:00:02:bc:50:f5
+        dra.net/mtu:
+          int: 9000
+        dra.net/numaNode:
+          int: 0
+        dra.net/pciAddress:
+          string: 0000:ad:00.0
+        dra.net/pciDevice:
+          string: ConnectX Family mlx5Gen Virtual Function
+        dra.net/pciSubsystem:
+          string: "0127"
+        dra.net/pciVendor:
+          string: Mellanox Technologies
+        dra.net/rdma:
+          bool: true
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: up
+        dra.net/type:
+          string: device
+        dra.net/virtual:
+          bool: false
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:aa
+      name: pci-0000-ad-00-0
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: enp183s0
+        dra.net/ipv4:
+          string: 10.2.0.5/16
+        dra.net/mac:
+          string: 02:00:02:bc:50:f9
+        dra.net/mtu:
+          int: 9000
+        dra.net/numaNode:
+          int: 0
+        dra.net/pciAddress:
+          string: 0000:b7:00.0
+        dra.net/pciDevice:
+          string: ConnectX Family mlx5Gen Virtual Function
+        dra.net/pciSubsystem:
+          string: "0127"
+        dra.net/pciVendor:
+          string: Mellanox Technologies
+        dra.net/rdma:
+          bool: true
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: up
+        dra.net/type:
+          string: device
+        dra.net/virtual:
+          bool: false
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:b4
+      name: pci-0000-b7-00-0
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: enp193s0
+        dra.net/ipv4:
+          string: 10.3.0.5/16
+        dra.net/mac:
+          string: 02:00:02:bc:50:fb
+        dra.net/mtu:
+          int: 9000
+        dra.net/numaNode:
+          int: 0
+        dra.net/pciAddress:
+          string: 0000:c1:00.0
+        dra.net/pciDevice:
+          string: ConnectX Family mlx5Gen Virtual Function
+        dra.net/pciSubsystem:
+          string: "0127"
+        dra.net/pciVendor:
+          string: Mellanox Technologies
+        dra.net/rdma:
+          bool: true
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: up
+        dra.net/type:
+          string: device
+        dra.net/virtual:
+          bool: false
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:be
+      name: pci-0000-c1-00-0
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: enp203s0
+        dra.net/ipv4:
+          string: 10.4.0.4/16
+        dra.net/mac:
+          string: 02:00:01:bc:50:fc
+        dra.net/mtu:
+          int: 9000
+        dra.net/numaNode:
+          int: 1
+        dra.net/pciAddress:
+          string: 0000:cb:00.0
+        dra.net/pciDevice:
+          string: ConnectX Family mlx5Gen Virtual Function
+        dra.net/pciSubsystem:
+          string: "0127"
+        dra.net/pciVendor:
+          string: Mellanox Technologies
+        dra.net/rdma:
+          bool: true
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: up
+        dra.net/type:
+          string: device
+        dra.net/virtual:
+          bool: false
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:c8
+      name: pci-0000-cb-00-0
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: enp213s0
+        dra.net/ipv4:
+          string: 10.5.0.4/16
+        dra.net/mac:
+          string: 02:00:01:bc:50:f6
+        dra.net/mtu:
+          int: 9000
+        dra.net/numaNode:
+          int: 1
+        dra.net/pciAddress:
+          string: 0000:d5:00.0
+        dra.net/pciDevice:
+          string: ConnectX Family mlx5Gen Virtual Function
+        dra.net/pciSubsystem:
+          string: "0127"
+        dra.net/pciVendor:
+          string: Mellanox Technologies
+        dra.net/rdma:
+          bool: true
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: up
+        dra.net/type:
+          string: device
+        dra.net/virtual:
+          bool: false
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:d2
+      name: pci-0000-d5-00-0
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: enp223s0
+        dra.net/ipv4:
+          string: 10.6.0.4/16
+        dra.net/mac:
+          string: 02:00:01:bc:50:f8
+        dra.net/mtu:
+          int: 9000
+        dra.net/numaNode:
+          int: 1
+        dra.net/pciAddress:
+          string: 0000:df:00.0
+        dra.net/pciDevice:
+          string: ConnectX Family mlx5Gen Virtual Function
+        dra.net/pciSubsystem:
+          string: "0127"
+        dra.net/pciVendor:
+          string: Mellanox Technologies
+        dra.net/rdma:
+          bool: true
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: up
+        dra.net/type:
+          string: device
+        dra.net/virtual:
+          bool: false
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:dc
+      name: pci-0000-df-00-0
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: enp233s0
+        dra.net/ipv4:
+          string: 10.7.0.4/16
+        dra.net/mac:
+          string: 02:00:01:bc:50:fd
+        dra.net/mtu:
+          int: 9000
+        dra.net/numaNode:
+          int: 1
+        dra.net/pciAddress:
+          string: 0000:e9:00.0
+        dra.net/pciDevice:
+          string: ConnectX Family mlx5Gen Virtual Function
+        dra.net/pciSubsystem:
+          string: "0127"
+        dra.net/pciVendor:
+          string: Mellanox Technologies
+        dra.net/rdma:
+          bool: true
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: up
+        dra.net/type:
+          string: device
+        dra.net/virtual:
+          bool: false
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:e6
+      name: pci-0000-e9-00-0
+    driver: dra.net
+    nodeName: psap-gpu-xhnvx-worker-3-db7jp
+    pool:
+      generation: 1
+      name: psap-gpu-xhnvx-worker-3-db7jp
+      resourceSliceCount: 1
+- apiVersion: resource.k8s.io/v1
+  kind: ResourceSlice
+  metadata:
+    creationTimestamp: "2026-06-02T16:41:27Z"
+    generateName: psap-gpu-xhnvx-worker-3-db7jp-gpu.nvidia.com-
+    generation: 1
+    name: psap-gpu-xhnvx-worker-3-db7jp-gpu.nvidia.com-fngsr
+    ownerReferences:
+    - apiVersion: v1
+      controller: true
+      kind: Node
+      name: psap-gpu-xhnvx-worker-3-db7jp
+      uid: 19626a4b-18e9-46ca-a356-8f3d64c9e159
+    resourceVersion: "776899416"
+    uid: 681292dd-1c26-4a51-b1a8-811cf9f6805b
+  spec:
+    devices:
+    - attributes:
+        addressingMode:
+          string: HMM
+        architecture:
+          string: Hopper
+        brand:
+          string: Nvidia
+        cudaComputeCapability:
+          version: 9.0.0
+        cudaDriverVersion:
+          version: 13.0.0
+        driverVersion:
+          version: 580.126.20
+        productName:
+          string: NVIDIA H100 80GB HBM3
+        resource.kubernetes.io/pciBusID:
+          string: 0000:a4:00.0
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:a0
+        type:
+          string: gpu
+        uuid:
+          string: GPU-85cb0ca7-ffe4-971b-d333-9ab1423731b1
+      capacity:
+        memory:
+          value: 81559Mi
+      name: gpu-7
+    - attributes:
+        addressingMode:
+          string: HMM
+        architecture:
+          string: Hopper
+        brand:
+          string: Nvidia
+        cudaComputeCapability:
+          version: 9.0.0
+        cudaDriverVersion:
+          version: 13.0.0
+        driverVersion:
+          version: 580.126.20
+        productName:
+          string: NVIDIA H100 80GB HBM3
+        resource.kubernetes.io/pciBusID:
+          string: 0000:ae:00.0
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:aa
+        type:
+          string: gpu
+        uuid:
+          string: GPU-ad5b427c-5c2d-7b1a-ac72-c1271733441b
+      capacity:
+        memory:
+          value: 81559Mi
+      name: gpu-6
+    - attributes:
+        addressingMode:
+          string: HMM
+        architecture:
+          string: Hopper
+        brand:
+          string: Nvidia
+        cudaComputeCapability:
+          version: 9.0.0
+        cudaDriverVersion:
+          version: 13.0.0
+        driverVersion:
+          version: 580.126.20
+        productName:
+          string: NVIDIA H100 80GB HBM3
+        resource.kubernetes.io/pciBusID:
+          string: 0000:b8:00.0
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:b4
+        type:
+          string: gpu
+        uuid:
+          string: GPU-81864a26-2974-e51f-2447-bf5cab9dc7fc
+      capacity:
+        memory:
+          value: 81559Mi
+      name: gpu-5
+    - attributes:
+        addressingMode:
+          string: HMM
+        architecture:
+          string: Hopper
+        brand:
+          string: Nvidia
+        cudaComputeCapability:
+          version: 9.0.0
+        cudaDriverVersion:
+          version: 13.0.0
+        driverVersion:
+          version: 580.126.20
+        productName:
+          string: NVIDIA H100 80GB HBM3
+        resource.kubernetes.io/pciBusID:
+          string: 0000:c2:00.0
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:be
+        type:
+          string: gpu
+        uuid:
+          string: GPU-6abcf339-5370-9126-00b0-d6ef13d36002
+      capacity:
+        memory:
+          value: 81559Mi
+      name: gpu-4
+    - attributes:
+        addressingMode:
+          string: HMM
+        architecture:
+          string: Hopper
+        brand:
+          string: Nvidia
+        cudaComputeCapability:
+          version: 9.0.0
+        cudaDriverVersion:
+          version: 13.0.0
+        driverVersion:
+          version: 580.126.20
+        productName:
+          string: NVIDIA H100 80GB HBM3
+        resource.kubernetes.io/pciBusID:
+          string: 0000:cc:00.0
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:c8
+        type:
+          string: gpu
+        uuid:
+          string: GPU-2522daaf-2fec-ec23-40c9-f6817f37d162
+      capacity:
+        memory:
+          value: 81559Mi
+      name: gpu-3
+    - attributes:
+        addressingMode:
+          string: HMM
+        architecture:
+          string: Hopper
+        brand:
+          string: Nvidia
+        cudaComputeCapability:
+          version: 9.0.0
+        cudaDriverVersion:
+          version: 13.0.0
+        driverVersion:
+          version: 580.126.20
+        productName:
+          string: NVIDIA H100 80GB HBM3
+        resource.kubernetes.io/pciBusID:
+          string: 0000:d6:00.0
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:d2
+        type:
+          string: gpu
+        uuid:
+          string: GPU-a83bcfaa-510e-774c-130c-14472e2beb1b
+      capacity:
+        memory:
+          value: 81559Mi
+      name: gpu-2
+    - attributes:
+        addressingMode:
+          string: HMM
+        architecture:
+          string: Hopper
+        brand:
+          string: Nvidia
+        cudaComputeCapability:
+          version: 9.0.0
+        cudaDriverVersion:
+          version: 13.0.0
+        driverVersion:
+          version: 580.126.20
+        productName:
+          string: NVIDIA H100 80GB HBM3
+        resource.kubernetes.io/pciBusID:
+          string: 0000:e0:00.0
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:dc
+        type:
+          string: gpu
+        uuid:
+          string: GPU-8bae7aae-0cea-c558-f4b7-ec2d5b47479c
+      capacity:
+        memory:
+          value: 81559Mi
+      name: gpu-1
+    - attributes:
+        addressingMode:
+          string: HMM
+        architecture:
+          string: Hopper
+        brand:
+          string: Nvidia
+        cudaComputeCapability:
+          version: 9.0.0
+        cudaDriverVersion:
+          version: 13.0.0
+        driverVersion:
+          version: 580.126.20
+        productName:
+          string: NVIDIA H100 80GB HBM3
+        resource.kubernetes.io/pciBusID:
+          string: 0000:ea:00.0
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:e6
+        type:
+          string: gpu
+        uuid:
+          string: GPU-7a2193fd-082d-6f3b-97eb-603e775f9b69
+      capacity:
+        memory:
+          value: 81559Mi
+      name: gpu-0
+    driver: gpu.nvidia.com
+    nodeName: psap-gpu-xhnvx-worker-3-db7jp
+    pool:
+      generation: 1
+      name: psap-gpu-xhnvx-worker-3-db7jp
+      resourceSliceCount: 1
+- apiVersion: resource.k8s.io/v1
+  kind: ResourceSlice
+  metadata:
+    creationTimestamp: "2026-05-28T09:44:57Z"
+    generateName: psap-gpu-xhnvx-worker-3-dls46-compute-domain.nvidia.com-
+    generation: 1
+    name: psap-gpu-xhnvx-worker-3-dls46-compute-domain.nvidia.com-tlh2b
+    ownerReferences:
+    - apiVersion: v1
+      controller: true
+      kind: Node
+      name: psap-gpu-xhnvx-worker-3-dls46
+      uid: 408346c2-2172-442d-8a39-082460ad2201
+    resourceVersion: "756784187"
+    uid: 34cc52d9-cf1f-4237-9b4f-76ec5c6d4dee
+  spec:
+    devices:
+    - attributes:
+        id:
+          int: 0
+        type:
+          string: channel
+      name: channel-0
+    - attributes:
+        id:
+          int: 0
+        type:
+          string: daemon
+      name: daemon-0
+    driver: compute-domain.nvidia.com
+    nodeName: psap-gpu-xhnvx-worker-3-dls46
+    pool:
+      generation: 1
+      name: psap-gpu-xhnvx-worker-3-dls46
+      resourceSliceCount: 1
+- apiVersion: resource.k8s.io/v1
+  kind: ResourceSlice
+  metadata:
+    creationTimestamp: "2026-05-28T09:44:42Z"
+    generateName: psap-gpu-xhnvx-worker-3-dls46-dra.net-
+    generation: 97
+    name: psap-gpu-xhnvx-worker-3-dls46-dra.net-n2n7z
+    ownerReferences:
+    - apiVersion: v1
+      controller: true
+      kind: Node
+      name: psap-gpu-xhnvx-worker-3-dls46
+      uid: 408346c2-2172-442d-8a39-082460ad2201
+    resourceVersion: "777681447"
+    uid: d4fbd438-3c93-4797-9096-4cc69fa15427
+  spec:
+    devices:
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: br-int
+        dra.net/mac:
+          string: b6:7b:e8:60:1b:43
+        dra.net/mtu:
+          int: 1400
+        dra.net/rdma:
+          bool: false
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: down
+        dra.net/type:
+          string: openvswitch
+        dra.net/virtual:
+          bool: true
+      name: br-int
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: genev_sys_6081
+        dra.net/mac:
+          string: ce:e3:fb:12:e4:18
+        dra.net/mtu:
+          int: 65000
+        dra.net/rdma:
+          bool: false
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: unknown
+        dra.net/type:
+          string: geneve
+        dra.net/virtual:
+          bool: true
+      name: net-m5sw4zlwl5zxs427gyydqmi
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: ovn-k8s-mp0
+        dra.net/ipv4:
+          string: 10.129.2.2/23
+        dra.net/mac:
+          string: 46:55:6a:93:fa:0a
+        dra.net/mtu:
+          int: 1400
+        dra.net/rdma:
+          bool: false
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: unknown
+        dra.net/type:
+          string: openvswitch
+        dra.net/virtual:
+          bool: true
+      name: ovn-k8s-mp0
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: ovs-system
+        dra.net/mac:
+          string: 8e:09:b8:8f:5f:fd
+        dra.net/mtu:
+          int: 1500
+        dra.net/rdma:
+          bool: false
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: down
+        dra.net/type:
+          string: openvswitch
+        dra.net/virtual:
+          bool: true
+      name: ovs-system
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: enp0s3
+        dra.net/mac:
+          string: 02:00:07:9a:08:a0
+        dra.net/mtu:
+          int: 1500
+        dra.net/pciAddress:
+          string: "0000:00:03.0"
+        dra.net/pciDevice:
+          string: Virtio network device
+        dra.net/pciSubsystem:
+          string: "0001"
+        dra.net/pciVendor:
+          string: Red Hat, Inc.
+        dra.net/rdma:
+          bool: false
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: up
+        dra.net/type:
+          string: device
+        dra.net/virtual:
+          bool: false
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:00
+      name: pci-0000-00-03-0
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: enp163s0
+        dra.net/ipv4:
+          string: 10.0.0.6/16
+        dra.net/mac:
+          string: 02:00:03:bc:50:f4
+        dra.net/mtu:
+          int: 9000
+        dra.net/numaNode:
+          int: 0
+        dra.net/pciAddress:
+          string: 0000:a3:00.0
+        dra.net/pciDevice:
+          string: ConnectX Family mlx5Gen Virtual Function
+        dra.net/pciSubsystem:
+          string: "0127"
+        dra.net/pciVendor:
+          string: Mellanox Technologies
+        dra.net/rdma:
+          bool: true
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: up
+        dra.net/type:
+          string: device
+        dra.net/virtual:
+          bool: false
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:a0
+      name: pci-0000-a3-00-0
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: enp173s0
+        dra.net/ipv4:
+          string: 10.1.0.7/16
+        dra.net/mac:
+          string: 02:00:04:bc:50:f5
+        dra.net/mtu:
+          int: 9000
+        dra.net/numaNode:
+          int: 0
+        dra.net/pciAddress:
+          string: 0000:ad:00.0
+        dra.net/pciDevice:
+          string: ConnectX Family mlx5Gen Virtual Function
+        dra.net/pciSubsystem:
+          string: "0127"
+        dra.net/pciVendor:
+          string: Mellanox Technologies
+        dra.net/rdma:
+          bool: true
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: up
+        dra.net/type:
+          string: device
+        dra.net/virtual:
+          bool: false
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:aa
+      name: pci-0000-ad-00-0
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: enp183s0
+        dra.net/ipv4:
+          string: 10.2.0.7/16
+        dra.net/mac:
+          string: 02:00:04:bc:50:f9
+        dra.net/mtu:
+          int: 9000
+        dra.net/numaNode:
+          int: 0
+        dra.net/pciAddress:
+          string: 0000:b7:00.0
+        dra.net/pciDevice:
+          string: ConnectX Family mlx5Gen Virtual Function
+        dra.net/pciSubsystem:
+          string: "0127"
+        dra.net/pciVendor:
+          string: Mellanox Technologies
+        dra.net/rdma:
+          bool: true
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: up
+        dra.net/type:
+          string: device
+        dra.net/virtual:
+          bool: false
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:b4
+      name: pci-0000-b7-00-0
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: enp193s0
+        dra.net/ipv4:
+          string: 10.3.0.7/16
+        dra.net/mac:
+          string: 02:00:04:bc:50:fb
+        dra.net/mtu:
+          int: 9000
+        dra.net/numaNode:
+          int: 0
+        dra.net/pciAddress:
+          string: 0000:c1:00.0
+        dra.net/pciDevice:
+          string: ConnectX Family mlx5Gen Virtual Function
+        dra.net/pciSubsystem:
+          string: "0127"
+        dra.net/pciVendor:
+          string: Mellanox Technologies
+        dra.net/rdma:
+          bool: true
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: up
+        dra.net/type:
+          string: device
+        dra.net/virtual:
+          bool: false
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:be
+      name: pci-0000-c1-00-0
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: enp203s0
+        dra.net/ipv4:
+          string: 10.4.0.6/16
+        dra.net/mac:
+          string: 02:00:03:bc:50:fc
+        dra.net/mtu:
+          int: 9000
+        dra.net/numaNode:
+          int: 1
+        dra.net/pciAddress:
+          string: 0000:cb:00.0
+        dra.net/pciDevice:
+          string: ConnectX Family mlx5Gen Virtual Function
+        dra.net/pciSubsystem:
+          string: "0127"
+        dra.net/pciVendor:
+          string: Mellanox Technologies
+        dra.net/rdma:
+          bool: true
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: up
+        dra.net/type:
+          string: device
+        dra.net/virtual:
+          bool: false
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:c8
+      name: pci-0000-cb-00-0
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: enp213s0
+        dra.net/ipv4:
+          string: 10.5.0.6/16
+        dra.net/mac:
+          string: 02:00:03:bc:50:f6
+        dra.net/mtu:
+          int: 9000
+        dra.net/numaNode:
+          int: 1
+        dra.net/pciAddress:
+          string: 0000:d5:00.0
+        dra.net/pciDevice:
+          string: ConnectX Family mlx5Gen Virtual Function
+        dra.net/pciSubsystem:
+          string: "0127"
+        dra.net/pciVendor:
+          string: Mellanox Technologies
+        dra.net/rdma:
+          bool: true
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: up
+        dra.net/type:
+          string: device
+        dra.net/virtual:
+          bool: false
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:d2
+      name: pci-0000-d5-00-0
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: enp223s0
+        dra.net/ipv4:
+          string: 10.6.0.6/16
+        dra.net/mac:
+          string: 02:00:03:bc:50:f8
+        dra.net/mtu:
+          int: 9000
+        dra.net/numaNode:
+          int: 1
+        dra.net/pciAddress:
+          string: 0000:df:00.0
+        dra.net/pciDevice:
+          string: ConnectX Family mlx5Gen Virtual Function
+        dra.net/pciSubsystem:
+          string: "0127"
+        dra.net/pciVendor:
+          string: Mellanox Technologies
+        dra.net/rdma:
+          bool: true
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: up
+        dra.net/type:
+          string: device
+        dra.net/virtual:
+          bool: false
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:dc
+      name: pci-0000-df-00-0
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: enp233s0
+        dra.net/ipv4:
+          string: 10.7.0.6/16
+        dra.net/mac:
+          string: 02:00:03:bc:50:fd
+        dra.net/mtu:
+          int: 9000
+        dra.net/numaNode:
+          int: 1
+        dra.net/pciAddress:
+          string: 0000:e9:00.0
+        dra.net/pciDevice:
+          string: ConnectX Family mlx5Gen Virtual Function
+        dra.net/pciSubsystem:
+          string: "0127"
+        dra.net/pciVendor:
+          string: Mellanox Technologies
+        dra.net/rdma:
+          bool: true
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: up
+        dra.net/type:
+          string: device
+        dra.net/virtual:
+          bool: false
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:e6
+      name: pci-0000-e9-00-0
+    driver: dra.net
+    nodeName: psap-gpu-xhnvx-worker-3-dls46
+    pool:
+      generation: 1
+      name: psap-gpu-xhnvx-worker-3-dls46
+      resourceSliceCount: 1
+- apiVersion: resource.k8s.io/v1
+  kind: ResourceSlice
+  metadata:
+    creationTimestamp: "2026-05-28T09:45:03Z"
+    generateName: psap-gpu-xhnvx-worker-3-dls46-gpu.nvidia.com-
+    generation: 1
+    name: psap-gpu-xhnvx-worker-3-dls46-gpu.nvidia.com-786ww
+    ownerReferences:
+    - apiVersion: v1
+      controller: true
+      kind: Node
+      name: psap-gpu-xhnvx-worker-3-dls46
+      uid: 408346c2-2172-442d-8a39-082460ad2201
+    resourceVersion: "756784266"
+    uid: e1bb0c3c-a7cb-450f-8852-b11dbd19227c
+  spec:
+    devices:
+    - attributes:
+        addressingMode:
+          string: HMM
+        architecture:
+          string: Hopper
+        brand:
+          string: Nvidia
+        cudaComputeCapability:
+          version: 9.0.0
+        cudaDriverVersion:
+          version: 13.0.0
+        driverVersion:
+          version: 580.126.20
+        productName:
+          string: NVIDIA H100 80GB HBM3
+        resource.kubernetes.io/pciBusID:
+          string: 0000:c2:00.0
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:be
+        type:
+          string: gpu
+        uuid:
+          string: GPU-d8456688-bab2-d735-fb28-48ecd7404aad
+      capacity:
+        memory:
+          value: 81559Mi
+      name: gpu-4
+    - attributes:
+        addressingMode:
+          string: HMM
+        architecture:
+          string: Hopper
+        brand:
+          string: Nvidia
+        cudaComputeCapability:
+          version: 9.0.0
+        cudaDriverVersion:
+          version: 13.0.0
+        driverVersion:
+          version: 580.126.20
+        productName:
+          string: NVIDIA H100 80GB HBM3
+        resource.kubernetes.io/pciBusID:
+          string: 0000:cc:00.0
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:c8
+        type:
+          string: gpu
+        uuid:
+          string: GPU-c34aa5d3-7de9-f791-f1d5-0177bdf60741
+      capacity:
+        memory:
+          value: 81559Mi
+      name: gpu-3
+    - attributes:
+        addressingMode:
+          string: HMM
+        architecture:
+          string: Hopper
+        brand:
+          string: Nvidia
+        cudaComputeCapability:
+          version: 9.0.0
+        cudaDriverVersion:
+          version: 13.0.0
+        driverVersion:
+          version: 580.126.20
+        productName:
+          string: NVIDIA H100 80GB HBM3
+        resource.kubernetes.io/pciBusID:
+          string: 0000:d6:00.0
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:d2
+        type:
+          string: gpu
+        uuid:
+          string: GPU-60803db7-a810-8a5f-a88a-e6fc181e5b1b
+      capacity:
+        memory:
+          value: 81559Mi
+      name: gpu-2
+    - attributes:
+        addressingMode:
+          string: HMM
+        architecture:
+          string: Hopper
+        brand:
+          string: Nvidia
+        cudaComputeCapability:
+          version: 9.0.0
+        cudaDriverVersion:
+          version: 13.0.0
+        driverVersion:
+          version: 580.126.20
+        productName:
+          string: NVIDIA H100 80GB HBM3
+        resource.kubernetes.io/pciBusID:
+          string: 0000:e0:00.0
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:dc
+        type:
+          string: gpu
+        uuid:
+          string: GPU-11b9a8b1-caf2-c563-cb87-5e3a26c8cb9e
+      capacity:
+        memory:
+          value: 81559Mi
+      name: gpu-1
+    - attributes:
+        addressingMode:
+          string: HMM
+        architecture:
+          string: Hopper
+        brand:
+          string: Nvidia
+        cudaComputeCapability:
+          version: 9.0.0
+        cudaDriverVersion:
+          version: 13.0.0
+        driverVersion:
+          version: 580.126.20
+        productName:
+          string: NVIDIA H100 80GB HBM3
+        resource.kubernetes.io/pciBusID:
+          string: 0000:ea:00.0
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:e6
+        type:
+          string: gpu
+        uuid:
+          string: GPU-a9421f61-4874-d2ac-83aa-fcae73b17be0
+      capacity:
+        memory:
+          value: 81559Mi
+      name: gpu-0
+    - attributes:
+        addressingMode:
+          string: HMM
+        architecture:
+          string: Hopper
+        brand:
+          string: Nvidia
+        cudaComputeCapability:
+          version: 9.0.0
+        cudaDriverVersion:
+          version: 13.0.0
+        driverVersion:
+          version: 580.126.20
+        productName:
+          string: NVIDIA H100 80GB HBM3
+        resource.kubernetes.io/pciBusID:
+          string: 0000:a4:00.0
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:a0
+        type:
+          string: gpu
+        uuid:
+          string: GPU-12abc9ff-ec01-2047-19be-ea21908f3036
+      capacity:
+        memory:
+          value: 81559Mi
+      name: gpu-7
+    - attributes:
+        addressingMode:
+          string: HMM
+        architecture:
+          string: Hopper
+        brand:
+          string: Nvidia
+        cudaComputeCapability:
+          version: 9.0.0
+        cudaDriverVersion:
+          version: 13.0.0
+        driverVersion:
+          version: 580.126.20
+        productName:
+          string: NVIDIA H100 80GB HBM3
+        resource.kubernetes.io/pciBusID:
+          string: 0000:ae:00.0
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:aa
+        type:
+          string: gpu
+        uuid:
+          string: GPU-d0de124a-cfef-380c-e4dd-cb72ea33eda8
+      capacity:
+        memory:
+          value: 81559Mi
+      name: gpu-6
+    - attributes:
+        addressingMode:
+          string: HMM
+        architecture:
+          string: Hopper
+        brand:
+          string: Nvidia
+        cudaComputeCapability:
+          version: 9.0.0
+        cudaDriverVersion:
+          version: 13.0.0
+        driverVersion:
+          version: 580.126.20
+        productName:
+          string: NVIDIA H100 80GB HBM3
+        resource.kubernetes.io/pciBusID:
+          string: 0000:b8:00.0
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:b4
+        type:
+          string: gpu
+        uuid:
+          string: GPU-6ffe605d-312a-5470-ea76-3d16f010b905
+      capacity:
+        memory:
+          value: 81559Mi
+      name: gpu-5
+    driver: gpu.nvidia.com
+    nodeName: psap-gpu-xhnvx-worker-3-dls46
+    pool:
+      generation: 1
+      name: psap-gpu-xhnvx-worker-3-dls46
+      resourceSliceCount: 1
+- apiVersion: resource.k8s.io/v1
+  kind: ResourceSlice
+  metadata:
+    creationTimestamp: "2026-05-28T09:58:07Z"
+    generateName: psap-gpu-xhnvx-worker-3-nwkdv-compute-domain.nvidia.com-
+    generation: 1
+    name: psap-gpu-xhnvx-worker-3-nwkdv-compute-domain.nvidia.com-wnmjp
+    ownerReferences:
+    - apiVersion: v1
+      controller: true
+      kind: Node
+      name: psap-gpu-xhnvx-worker-3-nwkdv
+      uid: cdfba4bb-e645-455e-85e6-14e9a2a116dc
+    resourceVersion: "756803708"
+    uid: 289eb768-8c59-4d21-ba40-1662056ba62c
+  spec:
+    devices:
+    - attributes:
+        id:
+          int: 0
+        type:
+          string: daemon
+      name: daemon-0
+    - attributes:
+        id:
+          int: 0
+        type:
+          string: channel
+      name: channel-0
+    driver: compute-domain.nvidia.com
+    nodeName: psap-gpu-xhnvx-worker-3-nwkdv
+    pool:
+      generation: 1
+      name: psap-gpu-xhnvx-worker-3-nwkdv
+      resourceSliceCount: 1
+- apiVersion: resource.k8s.io/v1
+  kind: ResourceSlice
+  metadata:
+    creationTimestamp: "2026-05-28T09:57:29Z"
+    generateName: psap-gpu-xhnvx-worker-3-nwkdv-dra.net-
+    generation: 89
+    name: psap-gpu-xhnvx-worker-3-nwkdv-dra.net-pllg7
+    ownerReferences:
+    - apiVersion: v1
+      controller: true
+      kind: Node
+      name: psap-gpu-xhnvx-worker-3-nwkdv
+      uid: cdfba4bb-e645-455e-85e6-14e9a2a116dc
+    resourceVersion: "777681604"
+    uid: 5eb6e900-0546-4a25-b0c0-dad83dd69ee0
+  spec:
+    devices:
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: br-int
+        dra.net/mac:
+          string: 22:bd:f8:5a:0c:aa
+        dra.net/mtu:
+          int: 1400
+        dra.net/rdma:
+          bool: false
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: down
+        dra.net/type:
+          string: openvswitch
+        dra.net/virtual:
+          bool: true
+      name: br-int
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: genev_sys_6081
+        dra.net/mac:
+          string: 62:3d:00:0c:28:c4
+        dra.net/mtu:
+          int: 65000
+        dra.net/rdma:
+          bool: false
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: unknown
+        dra.net/type:
+          string: geneve
+        dra.net/virtual:
+          bool: true
+      name: net-m5sw4zlwl5zxs427gyydqmi
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: ovn-k8s-mp0
+        dra.net/ipv4:
+          string: 10.130.2.2/23
+        dra.net/mac:
+          string: 0a:58:0a:82:02:02
+        dra.net/mtu:
+          int: 1400
+        dra.net/rdma:
+          bool: false
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: unknown
+        dra.net/type:
+          string: openvswitch
+        dra.net/virtual:
+          bool: true
+      name: ovn-k8s-mp0
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: ovs-system
+        dra.net/mac:
+          string: 16:43:fd:a0:7e:9f
+        dra.net/mtu:
+          int: 1500
+        dra.net/rdma:
+          bool: false
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: down
+        dra.net/type:
+          string: openvswitch
+        dra.net/virtual:
+          bool: true
+      name: ovs-system
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: enp0s3
+        dra.net/mac:
+          string: 02:00:09:9a:08:a0
+        dra.net/mtu:
+          int: 1500
+        dra.net/pciAddress:
+          string: "0000:03:00.0"
+        dra.net/pciDevice:
+          string: Virtio 1.0 network device
+        dra.net/pciSubsystem:
+          string: "1100"
+        dra.net/pciVendor:
+          string: Red Hat, Inc.
+        dra.net/rdma:
+          bool: false
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: up
+        dra.net/type:
+          string: device
+        dra.net/virtual:
+          bool: false
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:00
+      name: pci-0000-03-00-0
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: dev23
+        dra.net/ipv4:
+          string: 10.0.0.7/16
+        dra.net/mac:
+          string: 02:00:04:bc:50:f4
+        dra.net/mtu:
+          int: 9000
+        dra.net/numaNode:
+          int: 0
+        dra.net/pciAddress:
+          string: 0000:a3:00.0
+        dra.net/pciDevice:
+          string: ConnectX Family mlx5Gen Virtual Function
+        dra.net/pciSubsystem:
+          string: "0127"
+        dra.net/pciVendor:
+          string: Mellanox Technologies
+        dra.net/rdma:
+          bool: true
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: up
+        dra.net/type:
+          string: device
+        dra.net/virtual:
+          bool: false
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:a0
+      name: pci-0000-a3-00-0
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: dev22
+        dra.net/ipv4:
+          string: 10.1.0.4/16
+        dra.net/mac:
+          string: 02:00:01:bc:50:f5
+        dra.net/mtu:
+          int: 9000
+        dra.net/numaNode:
+          int: 0
+        dra.net/pciAddress:
+          string: 0000:ad:00.0
+        dra.net/pciDevice:
+          string: ConnectX Family mlx5Gen Virtual Function
+        dra.net/pciSubsystem:
+          string: "0127"
+        dra.net/pciVendor:
+          string: Mellanox Technologies
+        dra.net/rdma:
+          bool: true
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: up
+        dra.net/type:
+          string: device
+        dra.net/virtual:
+          bool: false
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:aa
+      name: pci-0000-ad-00-0
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: dev21
+        dra.net/ipv4:
+          string: 10.2.0.4/16
+        dra.net/mac:
+          string: 02:00:01:bc:50:f9
+        dra.net/mtu:
+          int: 9000
+        dra.net/numaNode:
+          int: 0
+        dra.net/pciAddress:
+          string: 0000:b7:00.0
+        dra.net/pciDevice:
+          string: ConnectX Family mlx5Gen Virtual Function
+        dra.net/pciSubsystem:
+          string: "0127"
+        dra.net/pciVendor:
+          string: Mellanox Technologies
+        dra.net/rdma:
+          bool: true
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: up
+        dra.net/type:
+          string: device
+        dra.net/virtual:
+          bool: false
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:b4
+      name: pci-0000-b7-00-0
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: dev20
+        dra.net/ipv4:
+          string: 10.3.0.4/16
+        dra.net/mac:
+          string: 02:00:01:bc:50:fb
+        dra.net/mtu:
+          int: 9000
+        dra.net/numaNode:
+          int: 0
+        dra.net/pciAddress:
+          string: 0000:c1:00.0
+        dra.net/pciDevice:
+          string: ConnectX Family mlx5Gen Virtual Function
+        dra.net/pciSubsystem:
+          string: "0127"
+        dra.net/pciVendor:
+          string: Mellanox Technologies
+        dra.net/rdma:
+          bool: true
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: up
+        dra.net/type:
+          string: device
+        dra.net/virtual:
+          bool: false
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:be
+      name: pci-0000-c1-00-0
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: net0
+        dra.net/ipv4:
+          string: 10.4.0.7/16
+        dra.net/mac:
+          string: 02:00:04:bc:50:fc
+        dra.net/mtu:
+          int: 9000
+        dra.net/numaNode:
+          int: 1
+        dra.net/pciAddress:
+          string: 0000:cb:00.0
+        dra.net/pciDevice:
+          string: ConnectX Family mlx5Gen Virtual Function
+        dra.net/pciSubsystem:
+          string: "0127"
+        dra.net/pciVendor:
+          string: Mellanox Technologies
+        dra.net/rdma:
+          bool: true
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: up
+        dra.net/type:
+          string: device
+        dra.net/virtual:
+          bool: false
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:c8
+      name: pci-0000-cb-00-0
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: net1
+        dra.net/ipv4:
+          string: 10.5.0.7/16
+        dra.net/mac:
+          string: 02:00:04:bc:50:f6
+        dra.net/mtu:
+          int: 9000
+        dra.net/numaNode:
+          int: 1
+        dra.net/pciAddress:
+          string: 0000:d5:00.0
+        dra.net/pciDevice:
+          string: ConnectX Family mlx5Gen Virtual Function
+        dra.net/pciSubsystem:
+          string: "0127"
+        dra.net/pciVendor:
+          string: Mellanox Technologies
+        dra.net/rdma:
+          bool: true
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: up
+        dra.net/type:
+          string: device
+        dra.net/virtual:
+          bool: false
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:d2
+      name: pci-0000-d5-00-0
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: dev17
+        dra.net/ipv4:
+          string: 10.6.0.7/16
+        dra.net/mac:
+          string: 02:00:04:bc:50:f8
+        dra.net/mtu:
+          int: 9000
+        dra.net/numaNode:
+          int: 1
+        dra.net/pciAddress:
+          string: 0000:df:00.0
+        dra.net/pciDevice:
+          string: ConnectX Family mlx5Gen Virtual Function
+        dra.net/pciSubsystem:
+          string: "0127"
+        dra.net/pciVendor:
+          string: Mellanox Technologies
+        dra.net/rdma:
+          bool: true
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: up
+        dra.net/type:
+          string: device
+        dra.net/virtual:
+          bool: false
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:dc
+      name: pci-0000-df-00-0
+    - attributes:
+        dra.net/alias:
+          string: ""
+        dra.net/ebpf:
+          bool: false
+        dra.net/encapsulation:
+          string: ether
+        dra.net/ifName:
+          string: dev16
+        dra.net/ipv4:
+          string: 10.7.0.7/16
+        dra.net/mac:
+          string: 02:00:04:bc:50:fd
+        dra.net/mtu:
+          int: 9000
+        dra.net/numaNode:
+          int: 1
+        dra.net/pciAddress:
+          string: 0000:e9:00.0
+        dra.net/pciDevice:
+          string: ConnectX Family mlx5Gen Virtual Function
+        dra.net/pciSubsystem:
+          string: "0127"
+        dra.net/pciVendor:
+          string: Mellanox Technologies
+        dra.net/rdma:
+          bool: true
+        dra.net/sriov:
+          bool: false
+        dra.net/state:
+          string: up
+        dra.net/type:
+          string: device
+        dra.net/virtual:
+          bool: false
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:e6
+      name: pci-0000-e9-00-0
+    driver: dra.net
+    nodeName: psap-gpu-xhnvx-worker-3-nwkdv
+    pool:
+      generation: 1
+      name: psap-gpu-xhnvx-worker-3-nwkdv
+      resourceSliceCount: 1
+- apiVersion: resource.k8s.io/v1
+  kind: ResourceSlice
+  metadata:
+    creationTimestamp: "2026-05-28T09:58:09Z"
+    generateName: psap-gpu-xhnvx-worker-3-nwkdv-gpu.nvidia.com-
+    generation: 1
+    name: psap-gpu-xhnvx-worker-3-nwkdv-gpu.nvidia.com-ld4zp
+    ownerReferences:
+    - apiVersion: v1
+      controller: true
+      kind: Node
+      name: psap-gpu-xhnvx-worker-3-nwkdv
+      uid: cdfba4bb-e645-455e-85e6-14e9a2a116dc
+    resourceVersion: "756803730"
+    uid: 68a73f51-5901-42a2-85b8-639a7302a3c9
+  spec:
+    devices:
+    - attributes:
+        addressingMode:
+          string: HMM
+        architecture:
+          string: Hopper
+        brand:
+          string: Nvidia
+        cudaComputeCapability:
+          version: 9.0.0
+        cudaDriverVersion:
+          version: 13.0.0
+        driverVersion:
+          version: 580.126.20
+        productName:
+          string: NVIDIA H100 80GB HBM3
+        resource.kubernetes.io/pciBusID:
+          string: 0000:ae:00.0
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:aa
+        type:
+          string: gpu
+        uuid:
+          string: GPU-d4ea3c17-018a-8719-1b54-837ce10fb287
+      capacity:
+        memory:
+          value: 81559Mi
+      name: gpu-6
+    - attributes:
+        addressingMode:
+          string: HMM
+        architecture:
+          string: Hopper
+        brand:
+          string: Nvidia
+        cudaComputeCapability:
+          version: 9.0.0
+        cudaDriverVersion:
+          version: 13.0.0
+        driverVersion:
+          version: 580.126.20
+        productName:
+          string: NVIDIA H100 80GB HBM3
+        resource.kubernetes.io/pciBusID:
+          string: 0000:b8:00.0
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:b4
+        type:
+          string: gpu
+        uuid:
+          string: GPU-17f07e29-4285-6de3-91d1-922cabe0d07d
+      capacity:
+        memory:
+          value: 81559Mi
+      name: gpu-5
+    - attributes:
+        addressingMode:
+          string: HMM
+        architecture:
+          string: Hopper
+        brand:
+          string: Nvidia
+        cudaComputeCapability:
+          version: 9.0.0
+        cudaDriverVersion:
+          version: 13.0.0
+        driverVersion:
+          version: 580.126.20
+        productName:
+          string: NVIDIA H100 80GB HBM3
+        resource.kubernetes.io/pciBusID:
+          string: 0000:c2:00.0
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:be
+        type:
+          string: gpu
+        uuid:
+          string: GPU-08236791-067f-0ea0-6257-a6e13f22febc
+      capacity:
+        memory:
+          value: 81559Mi
+      name: gpu-4
+    - attributes:
+        addressingMode:
+          string: HMM
+        architecture:
+          string: Hopper
+        brand:
+          string: Nvidia
+        cudaComputeCapability:
+          version: 9.0.0
+        cudaDriverVersion:
+          version: 13.0.0
+        driverVersion:
+          version: 580.126.20
+        productName:
+          string: NVIDIA H100 80GB HBM3
+        resource.kubernetes.io/pciBusID:
+          string: 0000:cc:00.0
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:c8
+        type:
+          string: gpu
+        uuid:
+          string: GPU-df41894e-3e1e-d463-90a1-cd4a061fa5ac
+      capacity:
+        memory:
+          value: 81559Mi
+      name: gpu-3
+    - attributes:
+        addressingMode:
+          string: HMM
+        architecture:
+          string: Hopper
+        brand:
+          string: Nvidia
+        cudaComputeCapability:
+          version: 9.0.0
+        cudaDriverVersion:
+          version: 13.0.0
+        driverVersion:
+          version: 580.126.20
+        productName:
+          string: NVIDIA H100 80GB HBM3
+        resource.kubernetes.io/pciBusID:
+          string: 0000:d6:00.0
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:d2
+        type:
+          string: gpu
+        uuid:
+          string: GPU-42af4084-a9e6-ee30-655b-bfb20cb695d3
+      capacity:
+        memory:
+          value: 81559Mi
+      name: gpu-2
+    - attributes:
+        addressingMode:
+          string: HMM
+        architecture:
+          string: Hopper
+        brand:
+          string: Nvidia
+        cudaComputeCapability:
+          version: 9.0.0
+        cudaDriverVersion:
+          version: 13.0.0
+        driverVersion:
+          version: 580.126.20
+        productName:
+          string: NVIDIA H100 80GB HBM3
+        resource.kubernetes.io/pciBusID:
+          string: 0000:e0:00.0
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:dc
+        type:
+          string: gpu
+        uuid:
+          string: GPU-41b4aa88-8d29-d1df-f723-ea3d34e19741
+      capacity:
+        memory:
+          value: 81559Mi
+      name: gpu-1
+    - attributes:
+        addressingMode:
+          string: HMM
+        architecture:
+          string: Hopper
+        brand:
+          string: Nvidia
+        cudaComputeCapability:
+          version: 9.0.0
+        cudaDriverVersion:
+          version: 13.0.0
+        driverVersion:
+          version: 580.126.20
+        productName:
+          string: NVIDIA H100 80GB HBM3
+        resource.kubernetes.io/pciBusID:
+          string: 0000:ea:00.0
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:e6
+        type:
+          string: gpu
+        uuid:
+          string: GPU-8c2567b5-5786-b22f-607e-94291e5c37ce
+      capacity:
+        memory:
+          value: 81559Mi
+      name: gpu-0
+    - attributes:
+        addressingMode:
+          string: HMM
+        architecture:
+          string: Hopper
+        brand:
+          string: Nvidia
+        cudaComputeCapability:
+          version: 9.0.0
+        cudaDriverVersion:
+          version: 13.0.0
+        driverVersion:
+          version: 580.126.20
+        productName:
+          string: NVIDIA H100 80GB HBM3
+        resource.kubernetes.io/pciBusID:
+          string: 0000:a4:00.0
+        resource.kubernetes.io/pcieRoot:
+          string: pci0000:a0
+        type:
+          string: gpu
+        uuid:
+          string: GPU-09715767-ab87-73d8-daba-e7414d452e42
+      capacity:
+        memory:
+          value: 81559Mi
+      name: gpu-7
+    driver: gpu.nvidia.com
+    nodeName: psap-gpu-xhnvx-worker-3-nwkdv
+    pool:
+      generation: 1
+      name: psap-gpu-xhnvx-worker-3-nwkdv
+      resourceSliceCount: 1
+kind: List
+metadata:
+  resourceVersion: ""
