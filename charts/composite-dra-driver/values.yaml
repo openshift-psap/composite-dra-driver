@@ -124,16 +124,10 @@ compositions:
         cel: 'device.attributes["dra.net"].rdma == true'
     pairingMode: "auto"
     transportMode: "ethernet"
-  # Example: add a second composition type
-  # - name: "gpu-quad"
-  #   members:
-  #     - source: gpu
-  #       count: 4
-  #     - source: nic
-  #       count: 4
-  #   constraints:
-  #     - type: matchAttribute
-  #       attribute: "resource.kubernetes.io/pcieRoot"
+  - name: "gpu"
+    members:
+      - source: gpu
+        count: 1
 
 railConfig:
   interfacePrefix: "net"
