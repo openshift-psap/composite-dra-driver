@@ -71,18 +71,18 @@ jobs:
           output=$(helm template test charts/composite-dra-driver --kube-version v1.35.0)
           echo "$output" | grep -q "matchConditions" \
             || { echo "FAIL: matchConditions not found in webhook config"; exit 1; }
-          echo "$output" | grep -q 'composite.dra/gpu-nic-pair' \
+          echo "$output" | grep -q 'composite.dra.example.io/gpu-nic-pair' \
             || { echo "FAIL: resourceName not found in matchConditions CEL expression"; exit 1; }
           echo "$output" | grep -q 'has(c.resources) && has(c.resources.requests)' \
             || { echo "FAIL: CEL expression missing null-safety checks"; exit 1; }
           echo "$output" | grep -q 'in c.resources.requests' \
             || { echo "FAIL: CEL expression does not check c.resources.requests"; exit 1; }
 
-      - name: "matchConditions: CEL uses configured resourceName"
+      - name: "matchConditions: CEL uses composition-derived resourceName"
         run: |
-          output=$(helm template test charts/composite-dra-driver --kube-version v1.35.0 --set webhook.resourceName="custom.io/my-device")
-          echo "$output" | grep -q 'custom.io/my-device' \
-            || { echo "FAIL: custom resourceName not reflected in matchConditions CEL"; exit 1; }
+          output=$(helm template test charts/composite-dra-driver --kube-version v1.35.0 --set 'compositions[0].name=custom-comp')
+          echo "$output" | grep -q 'composite.dra.example.io/custom-comp' \
+            || { echo "FAIL: composition-derived resourceName not reflected in matchConditions CEL"; exit 1; }
 
       - name: "Namespace exclusion: system namespaces excluded"
         run: |
