@@ -149,7 +149,12 @@ func (p *CompositePlugin) prepareClaim(
 			shadowInfo, err := p.claimMgr.Create(ctx, claim, &w.member, w.allocResult.Request, w.opaqueConfig)
 			if err != nil {
 				if errors.IsAlreadyExists(err) {
-					klog.V(2).Infof("plugin: shadow claim already exists for %s/%s (idempotent)", w.member.Driver, w.member.Device)
+					klog.V(2).Infof("plugin: shadow claim already exists for %s/%s (idempotent), fetching existing", w.member.Driver, w.member.Device)
+					shadowInfo, err = p.claimMgr.Get(ctx, claim, &w.member)
+					if err != nil {
+						w.err = fmt.Errorf("get existing shadow for %s/%s: %w", w.member.Driver, w.member.Device, err)
+						return
+					}
 				} else {
 					w.err = fmt.Errorf("create shadow for %s/%s: %w", w.member.Driver, w.member.Device, err)
 					return

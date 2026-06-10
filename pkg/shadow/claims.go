@@ -138,6 +138,29 @@ func (m *ClaimManager) Create(
 	}, nil
 }
 
+// Get fetches an existing shadow claim's info by its deterministic name.
+func (m *ClaimManager) Get(
+	ctx context.Context,
+	compositeClaim *resourceapi.ResourceClaim,
+	member *store.DeviceMember,
+) (*ShadowClaimInfo, error) {
+	shadowName := fmt.Sprintf("shadow-%s-%s-%s", compositeClaim.Name, member.SourceName, member.Device)
+	if len(shadowName) > 63 {
+		shadowName = shadowName[:63]
+	}
+
+	existing, err := m.client.ResourceClaims(compositeClaim.Namespace).Get(ctx, shadowName, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("get shadow claim %s: %w", shadowName, err)
+	}
+
+	return &ShadowClaimInfo{
+		Namespace: existing.Namespace,
+		Name:      existing.Name,
+		UID:       string(existing.UID),
+	}, nil
+}
+
 // Delete removes a shadow ResourceClaim.
 func (m *ClaimManager) Delete(ctx context.Context, namespace, name string) error {
 	err := m.client.ResourceClaims(namespace).Delete(ctx, name, metav1.DeleteOptions{})
