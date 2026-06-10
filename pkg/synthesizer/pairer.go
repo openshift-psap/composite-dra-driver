@@ -203,6 +203,10 @@ func (p *Pairer) pairWithExplicit(comp config.CompositionConfig, devicesBySource
 				valid = false
 				break
 			}
+			if len(matched) > member.Count {
+				klog.Warningf("pairer: explicit pair %d: source %q selector matched %d devices (need %d), using first %d — use a more specific selector for deterministic pairing",
+					i, member.Source, len(matched), member.Count, member.Count)
+			}
 
 			combo[member.Source] = matched[:member.Count]
 		}

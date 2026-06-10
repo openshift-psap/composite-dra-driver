@@ -288,7 +288,7 @@ func TestPairer_MultipleCompositions(t *testing.T) {
 		},
 	}
 
-	pairer := NewPairer(sources, compositions)
+	pairer := NewPairer(sources, compositions, nil)
 
 	devices := map[string][]SourceDevice{
 		"gpu": {
@@ -352,7 +352,7 @@ func TestPairer_SingleMemberComposition(t *testing.T) {
 		},
 	}
 
-	pairer := NewPairer(sources, compositions)
+	pairer := NewPairer(sources, compositions, nil)
 
 	devices := map[string][]SourceDevice{
 		"gpu": {
