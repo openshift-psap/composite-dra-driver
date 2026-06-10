@@ -38,6 +38,8 @@ type CompositionConfig struct {
 	TransportMode        string                       `json:"transportMode,omitempty"`
 	DeviceClassName      string                       `json:"deviceClassName,omitempty"`
 	ExtendedResourceName string                       `json:"extendedResourceName,omitempty"`
+	NodePoolLabelKey     string                       `json:"nodePoolLabelKey,omitempty"`
+	NodePools            []ExplicitNodePool           `json:"nodePools,omitempty"`
 }
 
 func (c *CompositionConfig) EffectiveDeviceClassName() string {
@@ -52,6 +54,19 @@ func (c *CompositionConfig) EffectiveExtendedResourceName(driverName string) str
 		return c.ExtendedResourceName
 	}
 	return driverName + "/" + c.Name
+}
+
+// ExplicitNodePool groups explicit device pairs for nodes sharing a MachineConfigPool label value.
+type ExplicitNodePool struct {
+	Label string               `json:"label"`
+	Pairs []ExplicitPairConfig `json:"pairs"`
+}
+
+// ExplicitPairConfig defines one admin-specified device grouping using CEL selectors.
+type ExplicitPairConfig struct {
+	Selectors map[string]string `json:"selectors"`
+	Rail      int               `json:"rail"`
+	NUMA      int               `json:"numa"`
 }
 
 type MemberConfig struct {
@@ -92,7 +107,8 @@ type RailParameters struct {
 	TableID int    `json:"tableID"`
 }
 
-// ExplicitPairings defines admin-configured device-to-device mappings for InfiniBand.
+// Deprecated: ExplicitPairings is the old top-level explicit pairing config.
+// Use CompositionConfig.ExplicitPairs with CEL selectors instead.
 type ExplicitPairings struct {
 	NodePoolLabelKey string             `json:"nodePoolLabelKey"`
 	NodePools        []NodePoolConfig   `json:"nodePools"`

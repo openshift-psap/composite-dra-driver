@@ -158,6 +158,138 @@ func TestValidate_InvalidPairingMode(t *testing.T) {
 	}
 }
 
+func explicitConfig() *CompositeConfig {
+	cfg := validConfig()
+	cfg.Compositions[0].PairingMode = "explicit"
+	cfg.Compositions[0].Constraints = nil
+	cfg.Compositions[0].NodePoolLabelKey = "node.kubernetes.io/instance-type"
+	cfg.Compositions[0].NodePools = []ExplicitNodePool{
+		{
+			Label: "gpu-h100",
+			Pairs: []ExplicitPairConfig{
+				{
+					Selectors: map[string]string{
+						"gpu": `device.attributes["resource.kubernetes.io"].pciBusID == "0000:0c:00.0"`,
+						"nic": `device.attributes["dra.net"].pciAddress == "0000:0d:00.0"`,
+					},
+					Rail: 0,
+					NUMA: 0,
+				},
+			},
+		},
+	}
+	return cfg
+}
+
+func TestValidate_ExplicitMode_Valid(t *testing.T) {
+	if err := Validate(explicitConfig()); err != nil {
+		t.Fatalf("expected valid explicit config, got: %v", err)
+	}
+}
+
+func TestValidate_ExplicitMode_MissingNodePools(t *testing.T) {
+	cfg := explicitConfig()
+	cfg.Compositions[0].NodePools = nil
+	if err := Validate(cfg); err == nil {
+		t.Fatal("expected error for missing nodePools")
+	}
+}
+
+func TestValidate_ExplicitMode_MissingNodePoolLabelKey(t *testing.T) {
+	cfg := explicitConfig()
+	cfg.Compositions[0].NodePoolLabelKey = ""
+	if err := Validate(cfg); err == nil {
+		t.Fatal("expected error for missing nodePoolLabelKey")
+	}
+}
+
+func TestValidate_ExplicitMode_WithConstraints(t *testing.T) {
+	cfg := explicitConfig()
+	cfg.Compositions[0].Constraints = []ConstraintConfig{
+		{Type: "matchAttribute", Attribute: "resource.kubernetes.io/pcieRoot"},
+	}
+	if err := Validate(cfg); err == nil {
+		t.Fatal("expected error for constraints with explicit mode")
+	}
+}
+
+func TestValidate_ExplicitMode_UnknownSourceInSelector(t *testing.T) {
+	cfg := explicitConfig()
+	cfg.Compositions[0].NodePools[0].Pairs[0].Selectors["unknown"] = "true"
+	if err := Validate(cfg); err == nil {
+		t.Fatal("expected error for unknown source in selector")
+	}
+}
+
+func TestValidate_ExplicitMode_MissingSourceInSelector(t *testing.T) {
+	cfg := explicitConfig()
+	delete(cfg.Compositions[0].NodePools[0].Pairs[0].Selectors, "gpu")
+	if err := Validate(cfg); err == nil {
+		t.Fatal("expected error for missing source in selector")
+	}
+}
+
+func TestValidate_ExplicitMode_EmptyCEL(t *testing.T) {
+	cfg := explicitConfig()
+	cfg.Compositions[0].NodePools[0].Pairs[0].Selectors["gpu"] = ""
+	if err := Validate(cfg); err == nil {
+		t.Fatal("expected error for empty CEL expression")
+	}
+}
+
+func TestValidate_ExplicitMode_NegativeRail(t *testing.T) {
+	cfg := explicitConfig()
+	cfg.Compositions[0].NodePools[0].Pairs[0].Rail = -1
+	if err := Validate(cfg); err == nil {
+		t.Fatal("expected error for negative rail")
+	}
+}
+
+func TestValidate_ExplicitMode_NegativeNUMA(t *testing.T) {
+	cfg := explicitConfig()
+	cfg.Compositions[0].NodePools[0].Pairs[0].NUMA = -1
+	if err := Validate(cfg); err == nil {
+		t.Fatal("expected error for negative NUMA")
+	}
+}
+
+func TestValidate_AutoMode_WithNodePools(t *testing.T) {
+	cfg := validConfig()
+	cfg.Compositions[0].NodePools = []ExplicitNodePool{
+		{Label: "test", Pairs: []ExplicitPairConfig{{Selectors: map[string]string{"gpu": "true", "nic": "true"}}}},
+	}
+	if err := Validate(cfg); err == nil {
+		t.Fatal("expected error for nodePools without explicit mode")
+	}
+}
+
+func TestValidate_ExplicitMode_DuplicatePoolLabel(t *testing.T) {
+	cfg := explicitConfig()
+	cfg.Compositions[0].NodePools = append(cfg.Compositions[0].NodePools, ExplicitNodePool{
+		Label: "gpu-h100",
+		Pairs: []ExplicitPairConfig{{Selectors: map[string]string{"gpu": "true", "nic": "true"}}},
+	})
+	if err := Validate(cfg); err == nil {
+		t.Fatal("expected error for duplicate pool label")
+	}
+}
+
+func TestValidate_ExplicitMode_EmptyPoolLabel(t *testing.T) {
+	cfg := explicitConfig()
+	cfg.Compositions[0].NodePools[0].Label = ""
+	if err := Validate(cfg); err == nil {
+		t.Fatal("expected error for empty pool label")
+	}
+}
+
+func TestValidate_ExplicitMode_EmptyPairs(t *testing.T) {
+	cfg := explicitConfig()
+	cfg.Compositions[0].NodePools[0].Pairs = nil
+	if err := Validate(cfg); err == nil {
+		t.Fatal("expected error for empty pairs in pool")
+	}
+}
+
 func TestValidate_RailConfig(t *testing.T) {
 	cfg := validConfig()
 	cfg.RailConfig = &RailConfig{
