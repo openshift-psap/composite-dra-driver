@@ -243,6 +243,149 @@ func TestPairer_AttributeForwarding(t *testing.T) {
 	if v, ok := attrs["resource.kubernetes.io/pcieRoot"]; !ok || *v.StringValue != "root-0" {
 		t.Errorf("expected pcieRoot = root-0, got %v", attrs["resource.kubernetes.io/pcieRoot"])
 	}
+
+	// Check compositionName attribute
+	if v, ok := attrs["composite/compositionName"]; !ok || *v.StringValue != "gpu-nic-pair" {
+		t.Errorf("expected composite/compositionName = gpu-nic-pair, got %v", attrs["composite/compositionName"])
+	}
+}
+
+func TestPairer_MultipleCompositions(t *testing.T) {
+	sources := []config.SourceConfig{
+		{
+			Name: "gpu", Driver: "gpu.nvidia.com", DeviceClassName: "gpu.nvidia.com",
+			ForwardAttributes: []config.AttributeGroup{
+				{Domain: "resource.kubernetes.io", Attributes: []string{"pcieRoot"}},
+			},
+		},
+		{
+			Name: "nic", Driver: "dra.net", DeviceClassName: "dranet",
+			ForwardAttributes: []config.AttributeGroup{
+				{Domain: "resource.kubernetes.io", Attributes: []string{"pcieRoot"}},
+			},
+		},
+		{
+			Name: "fpga", Driver: "fpga.example.io", DeviceClassName: "fpga",
+			ForwardAttributes: []config.AttributeGroup{
+				{Domain: "resource.kubernetes.io", Attributes: []string{"pcieRoot"}},
+			},
+		},
+	}
+	compositions := []config.CompositionConfig{
+		{
+			Name:    "gpu-nic-pair",
+			Members: []config.MemberConfig{{Source: "gpu", Count: 1}, {Source: "nic", Count: 1}},
+			Constraints: []config.ConstraintConfig{
+				{Type: "matchAttribute", Attribute: "resource.kubernetes.io/pcieRoot"},
+			},
+		},
+		{
+			Name:    "gpu-fpga-pair",
+			Members: []config.MemberConfig{{Source: "gpu", Count: 1}, {Source: "fpga", Count: 1}},
+			Constraints: []config.ConstraintConfig{
+				{Type: "matchAttribute", Attribute: "resource.kubernetes.io/pcieRoot"},
+			},
+		},
+	}
+
+	pairer := NewPairer(sources, compositions)
+
+	devices := map[string][]SourceDevice{
+		"gpu": {
+			{SourceName: "gpu", Driver: "gpu.nvidia.com", Pool: "p", DeviceName: "gpu-0",
+				Attributes: map[string]resourceapi.DeviceAttribute{
+					"resource.kubernetes.io/pcieRoot": strAttr("root-0"),
+				}},
+		},
+		"nic": {
+			{SourceName: "nic", Driver: "dra.net", Pool: "p", DeviceName: "nic-0",
+				Attributes: map[string]resourceapi.DeviceAttribute{
+					"resource.kubernetes.io/pcieRoot": strAttr("root-0"),
+				}},
+		},
+		"fpga": {
+			{SourceName: "fpga", Driver: "fpga.example.io", Pool: "p", DeviceName: "fpga-0",
+				Attributes: map[string]resourceapi.DeviceAttribute{
+					"resource.kubernetes.io/pcieRoot": strAttr("root-0"),
+				}},
+		},
+	}
+
+	result := pairer.ComputePairs(devices)
+	if len(result) != 2 {
+		t.Fatalf("expected 2 composite devices (one per composition), got %d", len(result))
+	}
+
+	compNames := map[string]bool{}
+	for _, cd := range result {
+		v, ok := cd.Attributes["composite/compositionName"]
+		if !ok || v.StringValue == nil {
+			t.Fatal("composite/compositionName attribute missing")
+		}
+		compNames[*v.StringValue] = true
+		if cd.Mapping.CompositionName != *v.StringValue {
+			t.Errorf("mapping.CompositionName=%s != attribute=%s", cd.Mapping.CompositionName, *v.StringValue)
+		}
+	}
+
+	if !compNames["gpu-nic-pair"] {
+		t.Error("missing gpu-nic-pair composition")
+	}
+	if !compNames["gpu-fpga-pair"] {
+		t.Error("missing gpu-fpga-pair composition")
+	}
+}
+
+func TestPairer_SingleMemberComposition(t *testing.T) {
+	sources := []config.SourceConfig{
+		{
+			Name: "gpu", Driver: "gpu.nvidia.com", DeviceClassName: "gpu.nvidia.com",
+			ForwardAttributes: []config.AttributeGroup{
+				{Domain: "gpu.nvidia.com", Attributes: []string{"model"}},
+			},
+		},
+	}
+	compositions := []config.CompositionConfig{
+		{
+			Name:    "gpu",
+			Members: []config.MemberConfig{{Source: "gpu", Count: 1}},
+		},
+	}
+
+	pairer := NewPairer(sources, compositions)
+
+	devices := map[string][]SourceDevice{
+		"gpu": {
+			{SourceName: "gpu", Driver: "gpu.nvidia.com", Pool: "p", DeviceName: "gpu-0",
+				Attributes: map[string]resourceapi.DeviceAttribute{
+					"gpu.nvidia.com/model": strAttr("A100"),
+				}},
+			{SourceName: "gpu", Driver: "gpu.nvidia.com", Pool: "p", DeviceName: "gpu-1",
+				Attributes: map[string]resourceapi.DeviceAttribute{
+					"gpu.nvidia.com/model": strAttr("A100"),
+				}},
+		},
+	}
+
+	result := pairer.ComputePairs(devices)
+	if len(result) != 2 {
+		t.Fatalf("expected 2 composite devices (one per GPU), got %d", len(result))
+	}
+
+	for _, cd := range result {
+		if v, ok := cd.Attributes["composite/compositionName"]; !ok || *v.StringValue != "gpu" {
+			t.Errorf("expected compositionName=gpu, got %v", cd.Attributes["composite/compositionName"])
+		}
+		if len(cd.Mapping.Members) != 1 {
+			t.Errorf("expected 1 member, got %d", len(cd.Mapping.Members))
+		}
+		if cd.Mapping.Members[0].Driver != "gpu.nvidia.com" {
+			t.Errorf("member driver = %s, want gpu.nvidia.com", cd.Mapping.Members[0].Driver)
+		}
+		if v, ok := cd.Attributes["gpu/model"]; !ok || *v.StringValue != "A100" {
+			t.Errorf("expected forwarded gpu/model=A100, got %v", cd.Attributes["gpu/model"])
+		}
+	}
 }
 
 func TestChooseCombinations(t *testing.T) {

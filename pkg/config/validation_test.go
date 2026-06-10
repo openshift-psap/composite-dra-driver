@@ -67,8 +67,16 @@ func TestValidate_UnknownSourceInMember(t *testing.T) {
 func TestValidate_SingleMember(t *testing.T) {
 	cfg := validConfig()
 	cfg.Compositions[0].Members = cfg.Compositions[0].Members[:1]
+	if err := Validate(cfg); err != nil {
+		t.Fatalf("single-member composition should be valid, got: %v", err)
+	}
+}
+
+func TestValidate_ZeroMembers(t *testing.T) {
+	cfg := validConfig()
+	cfg.Compositions[0].Members = nil
 	if err := Validate(cfg); err == nil {
-		t.Fatal("expected error for single member composition")
+		t.Fatal("expected error for zero members")
 	}
 }
 
@@ -85,6 +93,52 @@ func TestValidate_SelfReferencingSource(t *testing.T) {
 	cfg.Sources[0].Driver = cfg.Driver.Name
 	if err := Validate(cfg); err == nil {
 		t.Fatal("expected error for source referencing composite driver itself")
+	}
+}
+
+func TestValidate_DuplicateCompositionName(t *testing.T) {
+	cfg := validConfig()
+	cfg.Sources = append(cfg.Sources, SourceConfig{Name: "fpga", Driver: "fpga.io", DeviceClassName: "fpga"})
+	cfg.Compositions = append(cfg.Compositions, CompositionConfig{
+		Name:    "gpu-nic-pair",
+		Members: []MemberConfig{{Source: "gpu", Count: 1}, {Source: "fpga", Count: 1}},
+	})
+	if err := Validate(cfg); err == nil {
+		t.Fatal("expected error for duplicate composition name")
+	}
+}
+
+func TestValidate_DuplicateDeviceClassName(t *testing.T) {
+	cfg := validConfig()
+	cfg.Sources = append(cfg.Sources, SourceConfig{Name: "fpga", Driver: "fpga.io", DeviceClassName: "fpga"})
+	cfg.Compositions = append(cfg.Compositions, CompositionConfig{
+		Name:            "gpu-fpga-pair",
+		DeviceClassName: "composite-gpu-nic-pair",
+		Members:         []MemberConfig{{Source: "gpu", Count: 1}, {Source: "fpga", Count: 1}},
+	})
+	if err := Validate(cfg); err == nil {
+		t.Fatal("expected error for duplicate effective deviceClassName")
+	}
+}
+
+func TestValidate_CustomDeviceClassName(t *testing.T) {
+	cfg := validConfig()
+	cfg.Compositions[0].DeviceClassName = "my-custom-class"
+	if err := Validate(cfg); err != nil {
+		t.Fatalf("expected valid config with custom deviceClassName, got: %v", err)
+	}
+	if cfg.Compositions[0].EffectiveDeviceClassName() != "my-custom-class" {
+		t.Errorf("expected my-custom-class, got %s", cfg.Compositions[0].EffectiveDeviceClassName())
+	}
+}
+
+func TestCompositionConfig_EffectiveDefaults(t *testing.T) {
+	c := CompositionConfig{Name: "gpu-nic-pair"}
+	if c.EffectiveDeviceClassName() != "composite-gpu-nic-pair" {
+		t.Errorf("default deviceClassName = %s, want composite-gpu-nic-pair", c.EffectiveDeviceClassName())
+	}
+	if c.EffectiveExtendedResourceName("composite.dra.io") != "composite.dra.io/gpu-nic-pair" {
+		t.Errorf("default extendedResourceName = %s", c.EffectiveExtendedResourceName("composite.dra.io"))
 	}
 }
 

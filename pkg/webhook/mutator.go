@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sort"
 
 	corev1 "k8s.io/api/core/v1"
 	resourceapi "k8s.io/api/resource/v1"
@@ -20,8 +21,9 @@ const (
 
 // MutatorConfig holds the webhook configuration.
 type MutatorConfig struct {
-	DeviceClassName string
-	ResourceName    string // e.g. "composite.dra/gpu-nic-pair"
+	// ResourceMappings maps synthetic resource names to DeviceClass names.
+	// e.g., "composite.dra/gpu-nic-pair" -> "composite-gpu-nic-pair"
+	ResourceMappings map[string]string
 }
 
 // Mutator generates ResourceClaimTemplates for composite devices.
@@ -34,6 +36,13 @@ func NewMutator(cfg MutatorConfig, client resourceclient.ResourceV1Interface) *M
 	return &Mutator{cfg: cfg, client: client}
 }
 
+type resourceMatch struct {
+	ResourceName    string
+	DeviceClassName string
+	Count           int
+	ContainerIdx    int
+}
+
 // Mutate processes a pod and returns JSON patch operations.
 // Returns nil if no mutation is needed.
 func (m *Mutator) Mutate(ctx context.Context, pod *corev1.Pod, namespace string) ([]PatchOp, error) {
@@ -41,65 +50,113 @@ func (m *Mutator) Mutate(ctx context.Context, pod *corev1.Pod, namespace string)
 		return nil, nil
 	}
 
-	pairCount, containerIndices := m.findResourceRequests(pod)
-	if pairCount == 0 {
+	matches := m.findResourceRequests(pod)
+	if len(matches) == 0 {
 		return nil, nil
 	}
 
-	claimSpec := BuildClaimSpec(m.cfg.DeviceClassName, pairCount)
-
-	templateName := fmt.Sprintf("%s-composite-pairs", pod.Name)
-	if len(templateName) > 63 {
-		templateName = templateName[:63]
+	// Group matches by composition (resource name → device class)
+	type compositionRequest struct {
+		resourceName    string
+		deviceClassName string
+		totalCount      int
+		containerIdxs   []int
 	}
 
-	template := &resourceapi.ResourceClaimTemplate{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      templateName,
-			Namespace: namespace,
-			Labels: map[string]string{
-				"app.kubernetes.io/managed-by": "composite-dra-webhook",
-			},
-		},
-		Spec: resourceapi.ResourceClaimTemplateSpec{
-			Spec: claimSpec,
-		},
-	}
-
-	_, err := m.client.ResourceClaimTemplates(namespace).Create(ctx, template, metav1.CreateOptions{})
-	if err != nil {
-		if errors.IsAlreadyExists(err) {
-			klog.V(2).Infof("webhook: claim template %s/%s already exists (idempotent)", namespace, templateName)
-		} else {
-			return nil, fmt.Errorf("create claim template: %w", err)
+	compMap := make(map[string]*compositionRequest)
+	for _, match := range matches {
+		cr, ok := compMap[match.ResourceName]
+		if !ok {
+			cr = &compositionRequest{
+				resourceName:    match.ResourceName,
+				deviceClassName: match.DeviceClassName,
+			}
+			compMap[match.ResourceName] = cr
 		}
+		cr.totalCount += match.Count
+		cr.containerIdxs = append(cr.containerIdxs, match.ContainerIdx)
 	}
 
-	klog.Infof("webhook: created ResourceClaimTemplate %s/%s (%d pairs)",
-		namespace, templateName, pairCount)
+	// Sort for deterministic output
+	var compKeys []string
+	for k := range compMap {
+		compKeys = append(compKeys, k)
+	}
+	sort.Strings(compKeys)
 
-	patches := m.buildPatches(pod, templateName, pairCount, containerIndices)
+	// Create one ResourceClaimTemplate per composition type
+	var claims []claimInfo
+
+	for _, resName := range compKeys {
+		cr := compMap[resName]
+		templateName := compositionTemplateName(pod.Name, cr.deviceClassName)
+
+		claimSpec := BuildClaimSpec(cr.deviceClassName, cr.totalCount)
+		template := &resourceapi.ResourceClaimTemplate{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      templateName,
+				Namespace: namespace,
+				Labels: map[string]string{
+					"app.kubernetes.io/managed-by": "composite-dra-webhook",
+				},
+			},
+			Spec: resourceapi.ResourceClaimTemplateSpec{
+				Spec: claimSpec,
+			},
+		}
+
+		_, err := m.client.ResourceClaimTemplates(namespace).Create(ctx, template, metav1.CreateOptions{})
+		if err != nil {
+			if errors.IsAlreadyExists(err) {
+				klog.V(2).Infof("webhook: claim template %s/%s already exists (idempotent)", namespace, templateName)
+			} else {
+				return nil, fmt.Errorf("create claim template %s: %w", templateName, err)
+			}
+		}
+
+		klog.Infof("webhook: created ResourceClaimTemplate %s/%s (%d devices, class=%s)",
+			namespace, templateName, cr.totalCount, cr.deviceClassName)
+
+		claims = append(claims, claimInfo{
+			templateName:    templateName,
+			resourceName:    cr.resourceName,
+			deviceClassName: cr.deviceClassName,
+			pairCount:       cr.totalCount,
+			containerIdxs:   cr.containerIdxs,
+		})
+	}
+
+	patches := m.buildPatches(pod, matches, claims)
 	return patches, nil
 }
 
-// findResourceRequests scans all containers for the synthetic resource request.
-// Returns total pair count and indices of containers that have the request.
-func (m *Mutator) findResourceRequests(pod *corev1.Pod) (int, []int) {
-	resName := corev1.ResourceName(m.cfg.ResourceName)
-	totalCount := 0
-	var indices []int
+func compositionTemplateName(podName, deviceClassName string) string {
+	name := fmt.Sprintf("%s-%s", podName, deviceClassName)
+	if len(name) > 63 {
+		name = name[:63]
+	}
+	return name
+}
 
+// findResourceRequests scans all containers for any configured synthetic resource.
+func (m *Mutator) findResourceRequests(pod *corev1.Pod) []resourceMatch {
+	var matches []resourceMatch
 	for i := range pod.Spec.Containers {
-		if qty, ok := pod.Spec.Containers[i].Resources.Requests[resName]; ok {
-			count, ok := qty.AsInt64()
-			if ok && count > 0 {
-				totalCount += int(count)
-				indices = append(indices, i)
+		for resName, devClass := range m.cfg.ResourceMappings {
+			if qty, ok := pod.Spec.Containers[i].Resources.Requests[corev1.ResourceName(resName)]; ok {
+				count, ok := qty.AsInt64()
+				if ok && count > 0 {
+					matches = append(matches, resourceMatch{
+						ResourceName:    resName,
+						DeviceClassName: devClass,
+						Count:           int(count),
+						ContainerIdx:    i,
+					})
+				}
 			}
 		}
 	}
-
-	return totalCount, indices
+	return matches
 }
 
 // PatchOp is a JSON Patch operation.
@@ -109,9 +166,16 @@ type PatchOp struct {
 	Value interface{} `json:"value,omitempty"`
 }
 
-func (m *Mutator) buildPatches(pod *corev1.Pod, templateName string, pairCount int, containerIndices []int) []PatchOp {
+type claimInfo struct {
+	templateName    string
+	resourceName    string
+	deviceClassName string
+	pairCount       int
+	containerIdxs   []int
+}
+
+func (m *Mutator) buildPatches(pod *corev1.Pod, matches []resourceMatch, claims []claimInfo) []PatchOp {
 	var patches []PatchOp
-	resName := corev1.ResourceName(m.cfg.ResourceName)
 
 	// Add mutated annotation
 	if pod.Annotations == nil {
@@ -128,69 +192,84 @@ func (m *Mutator) buildPatches(pod *corev1.Pod, templateName string, pairCount i
 		})
 	}
 
-	// Remove synthetic resource from each container's requests and limits
-	for _, idx := range containerIndices {
-		escapedRes := jsonPatchEscape(string(resName))
+	// Remove all synthetic resources from containers
+	removed := make(map[string]bool)
+	for _, match := range matches {
+		key := fmt.Sprintf("%d/%s", match.ContainerIdx, match.ResourceName)
+		if removed[key] {
+			continue
+		}
+		removed[key] = true
+		escapedRes := jsonPatchEscape(match.ResourceName)
 		patches = append(patches, PatchOp{
 			Op:   "remove",
-			Path: fmt.Sprintf("/spec/containers/%d/resources/requests/%s", idx, escapedRes),
+			Path: fmt.Sprintf("/spec/containers/%d/resources/requests/%s", match.ContainerIdx, escapedRes),
 		})
-		if _, ok := pod.Spec.Containers[idx].Resources.Limits[resName]; ok {
+		resName := corev1.ResourceName(match.ResourceName)
+		if _, ok := pod.Spec.Containers[match.ContainerIdx].Resources.Limits[resName]; ok {
 			patches = append(patches, PatchOp{
 				Op:   "remove",
-				Path: fmt.Sprintf("/spec/containers/%d/resources/limits/%s", idx, escapedRes),
+				Path: fmt.Sprintf("/spec/containers/%d/resources/limits/%s", match.ContainerIdx, escapedRes),
 			})
 		}
 	}
 
-	// Add resourceClaims to pod spec
-	claimRef := corev1.PodResourceClaim{
-		Name:                      "composite-pairs",
-		ResourceClaimTemplateName: &templateName,
-	}
-
-	if pod.Spec.ResourceClaims == nil {
-		patches = append(patches, PatchOp{
-			Op:    "add",
-			Path:  "/spec/resourceClaims",
-			Value: []corev1.PodResourceClaim{claimRef},
-		})
-	} else {
-		patches = append(patches, PatchOp{
-			Op:    "add",
-			Path:  "/spec/resourceClaims/-",
-			Value: claimRef,
-		})
-	}
-
-	// Add claim references to containers that had the resource request
-	pairIdx := 0
-	for _, containerIdx := range containerIndices {
-		qty := pod.Spec.Containers[containerIdx].Resources.Requests[resName]
-		count, _ := qty.AsInt64()
-
-		var claimRefs []corev1.ResourceClaim
-		for i := 0; i < int(count); i++ {
-			claimRefs = append(claimRefs, corev1.ResourceClaim{
-				Name:    "composite-pairs",
-				Request: fmt.Sprintf("pair-%d", pairIdx),
-			})
-			pairIdx++
+	// Add resourceClaims and claim refs per composition
+	for i, claim := range claims {
+		claimName := fmt.Sprintf("composite-%s", claim.deviceClassName)
+		if len(claimName) > 63 {
+			claimName = claimName[:63]
 		}
 
-		if pod.Spec.Containers[containerIdx].Resources.Claims == nil {
+		claimRef := corev1.PodResourceClaim{
+			Name:                      claimName,
+			ResourceClaimTemplateName: &claim.templateName,
+		}
+
+		if i == 0 && pod.Spec.ResourceClaims == nil {
 			patches = append(patches, PatchOp{
 				Op:    "add",
-				Path:  fmt.Sprintf("/spec/containers/%d/resources/claims", containerIdx),
-				Value: claimRefs,
+				Path:  "/spec/resourceClaims",
+				Value: []corev1.PodResourceClaim{claimRef},
 			})
 		} else {
-			for _, ref := range claimRefs {
+			patches = append(patches, PatchOp{
+				Op:    "add",
+				Path:  "/spec/resourceClaims/-",
+				Value: claimRef,
+			})
+		}
+
+		// Add claim references to containers
+		pairIdx := 0
+		for _, containerIdx := range claim.containerIdxs {
+			resName := corev1.ResourceName(claim.resourceName)
+			qty := pod.Spec.Containers[containerIdx].Resources.Requests[resName]
+			count, _ := qty.AsInt64()
+
+			var claimRefs []corev1.ResourceClaim
+			for j := 0; j < int(count); j++ {
+				claimRefs = append(claimRefs, corev1.ResourceClaim{
+					Name:    claimName,
+					Request: fmt.Sprintf("pair-%d", pairIdx),
+				})
+				pairIdx++
+			}
+
+			if pod.Spec.Containers[containerIdx].Resources.Claims == nil {
 				patches = append(patches, PatchOp{
 					Op:    "add",
-					Path:  fmt.Sprintf("/spec/containers/%d/resources/claims/-", containerIdx),
-					Value: ref,
+					Path:  fmt.Sprintf("/spec/containers/%d/resources/claims", containerIdx),
+					Value: claimRefs,
 				})
+			} else {
+				for _, ref := range claimRefs {
+					patches = append(patches, PatchOp{
+						Op:    "add",
+						Path:  fmt.Sprintf("/spec/containers/%d/resources/claims/-", containerIdx),
+						Value: ref,
+					})
+				}
 			}
 		}
 	}

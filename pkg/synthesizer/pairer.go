@@ -264,6 +264,9 @@ func (p *Pairer) buildCompositeDevice(comp config.CompositionConfig, combo map[s
 		attrs["composite/numaNode"] = resourceapi.DeviceAttribute{IntValue: &intVal}
 	}
 
+	compNameVal := comp.Name
+	attrs["composite/compositionName"] = resourceapi.DeviceAttribute{StringValue: &compNameVal}
+
 	name := strings.Join(nameParts, "--")
 	if len(name) > 63 {
 		name = name[:63]

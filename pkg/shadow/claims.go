@@ -2,6 +2,8 @@ package shadow
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 
 	resourceapi "k8s.io/api/resource/v1"
@@ -12,6 +14,19 @@ import (
 
 	"github.com/openshift-psap/composite-dra-driver/pkg/store"
 )
+
+// shadowClaimName generates a deterministic name for a shadow claim.
+// Hashes the composite claim name to a short prefix so the member-identifying
+// suffix (sourceName + device) has room within the 63-char K8s name limit.
+func shadowClaimName(compositeClaimName string, member *store.DeviceMember) string {
+	h := sha256.Sum256([]byte(compositeClaimName))
+	prefix := hex.EncodeToString(h[:4])
+	name := fmt.Sprintf("shadow-%s-%s-%s", prefix, member.SourceName, member.Device)
+	if len(name) > 63 {
+		name = name[:63]
+	}
+	return name
+}
 
 // ClaimManager creates and deletes shadow ResourceClaims for underlying drivers.
 type ClaimManager struct {
@@ -45,10 +60,7 @@ func (m *ClaimManager) Create(
 	requestName string,
 	opaqueConfig []byte,
 ) (*ShadowClaimInfo, error) {
-	shadowName := fmt.Sprintf("shadow-%s-%s-%s", compositeClaim.Name, member.SourceName, member.Device)
-	if len(shadowName) > 63 {
-		shadowName = shadowName[:63]
-	}
+	shadowName := shadowClaimName(compositeClaim.Name, member)
 
 	allocationResult := resourceapi.AllocationResult{
 		Devices: resourceapi.DeviceAllocationResult{
@@ -135,6 +147,26 @@ func (m *ClaimManager) Create(
 		Namespace: updated.Namespace,
 		Name:      updated.Name,
 		UID:       string(updated.UID),
+	}, nil
+}
+
+// Get fetches an existing shadow claim's info by its deterministic name.
+func (m *ClaimManager) Get(
+	ctx context.Context,
+	compositeClaim *resourceapi.ResourceClaim,
+	member *store.DeviceMember,
+) (*ShadowClaimInfo, error) {
+	shadowName := shadowClaimName(compositeClaim.Name, member)
+
+	existing, err := m.client.ResourceClaims(compositeClaim.Namespace).Get(ctx, shadowName, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("get shadow claim %s: %w", shadowName, err)
+	}
+
+	return &ShadowClaimInfo{
+		Namespace: existing.Namespace,
+		Name:      existing.Name,
+		UID:       string(existing.UID),
 	}, nil
 }
 

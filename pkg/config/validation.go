@@ -36,12 +36,26 @@ func Validate(cfg *CompositeConfig) error {
 		sourceNames[src.Name] = true
 	}
 
+	compNames := make(map[string]bool)
+	deviceClassNames := make(map[string]bool)
+
 	for i, comp := range cfg.Compositions {
 		if comp.Name == "" {
 			return fmt.Errorf("compositions[%d].name is required", i)
 		}
-		if len(comp.Members) < 2 {
-			return fmt.Errorf("compositions[%d] needs at least 2 members", i)
+		if compNames[comp.Name] {
+			return fmt.Errorf("duplicate composition name: %s", comp.Name)
+		}
+		compNames[comp.Name] = true
+
+		dcn := comp.EffectiveDeviceClassName()
+		if deviceClassNames[dcn] {
+			return fmt.Errorf("duplicate effective deviceClassName: %s (from compositions[%d])", dcn, i)
+		}
+		deviceClassNames[dcn] = true
+
+		if len(comp.Members) < 1 {
+			return fmt.Errorf("compositions[%d] needs at least 1 member", i)
 		}
 		for j, member := range comp.Members {
 			if !sourceNames[member.Source] {

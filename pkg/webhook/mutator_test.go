@@ -12,19 +12,22 @@ import (
 	k8stesting "k8s.io/client-go/testing"
 )
 
-func newTestMutator(resourceName string) *Mutator {
+func newTestMutator(mappings map[string]string) *Mutator {
 	fakeClient := &fake.FakeResourceV1{Fake: &k8stesting.Fake{}}
 	fakeClient.Fake.AddReactor("create", "resourceclaimtemplates", func(action k8stesting.Action) (bool, runtime.Object, error) {
 		return true, action.(k8stesting.CreateAction).GetObject(), nil
 	})
 	return NewMutator(MutatorConfig{
-		DeviceClassName: "composite-gpu-nic",
-		ResourceName:    resourceName,
+		ResourceMappings: mappings,
 	}, fakeClient)
 }
 
+func singleMapping() map[string]string {
+	return map[string]string{"composite.dra/gpu-nic-pair": "composite-gpu-nic-pair"}
+}
+
 func TestMutate_SkipsPodWithoutSyntheticResource(t *testing.T) {
-	m := newTestMutator("composite.dra/gpu-nic-pair")
+	m := newTestMutator(singleMapping())
 
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{Name: "normal-pod"},
@@ -53,7 +56,7 @@ func TestMutate_SkipsPodWithoutSyntheticResource(t *testing.T) {
 }
 
 func TestMutate_SkipsPodWithDifferentResource(t *testing.T) {
-	m := newTestMutator("composite.dra/gpu-nic-pair")
+	m := newTestMutator(singleMapping())
 
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{Name: "other-resource-pod"},
@@ -81,7 +84,7 @@ func TestMutate_SkipsPodWithDifferentResource(t *testing.T) {
 }
 
 func TestMutate_MutatesPodWithSyntheticResource(t *testing.T) {
-	m := newTestMutator("composite.dra/gpu-nic-pair")
+	m := newTestMutator(singleMapping())
 
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{GenerateName: "test-pod-"},
@@ -112,7 +115,7 @@ func TestMutate_MutatesPodWithSyntheticResource(t *testing.T) {
 }
 
 func TestMutate_SkipsAlreadyMutatedPod(t *testing.T) {
-	m := newTestMutator("composite.dra/gpu-nic-pair")
+	m := newTestMutator(singleMapping())
 
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
@@ -143,7 +146,7 @@ func TestMutate_SkipsAlreadyMutatedPod(t *testing.T) {
 }
 
 func TestMutate_SkipsZeroCountResource(t *testing.T) {
-	m := newTestMutator("composite.dra/gpu-nic-pair")
+	m := newTestMutator(singleMapping())
 
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{Name: "zero-count"},
@@ -167,5 +170,90 @@ func TestMutate_SkipsZeroCountResource(t *testing.T) {
 	}
 	if patches != nil {
 		t.Fatalf("expected nil patches for zero-count resource, got %d patches", len(patches))
+	}
+}
+
+func TestMutate_MultipleResourceTypes(t *testing.T) {
+	m := newTestMutator(map[string]string{
+		"composite.dra/gpu-nic-pair":  "composite-gpu-nic-pair",
+		"composite.dra/gpu-fpga-pair": "composite-gpu-fpga-pair",
+	})
+
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: "multi-comp"},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{
+				{
+					Name: "app",
+					Resources: corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{
+							corev1.ResourceName("composite.dra/gpu-nic-pair"):  resource.MustParse("2"),
+							corev1.ResourceName("composite.dra/gpu-fpga-pair"): resource.MustParse("1"),
+						},
+					},
+				},
+			},
+		},
+	}
+
+	patches, err := m.Mutate(context.Background(), pod, "default")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if patches == nil {
+		t.Fatal("expected patches for multi-resource pod")
+	}
+
+	// Count remove ops (should remove both synthetic resources)
+	removeCount := 0
+	addClaimsCount := 0
+	for _, p := range patches {
+		if p.Op == "remove" {
+			removeCount++
+		}
+		if p.Op == "add" && p.Path == "/spec/resourceClaims" || p.Path == "/spec/resourceClaims/-" {
+			addClaimsCount++
+		}
+	}
+	if removeCount != 2 {
+		t.Errorf("expected 2 remove ops (one per resource), got %d", removeCount)
+	}
+}
+
+func TestMutate_OnlyMatchingResources(t *testing.T) {
+	m := newTestMutator(map[string]string{
+		"composite.dra/gpu-nic-pair": "composite-gpu-nic-pair",
+	})
+
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: "partial-match"},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{
+				{
+					Name: "app",
+					Resources: corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{
+							corev1.ResourceName("composite.dra/gpu-nic-pair"): resource.MustParse("1"),
+							corev1.ResourceName("nvidia.com/gpu"):             resource.MustParse("1"),
+						},
+					},
+				},
+			},
+		},
+	}
+
+	patches, err := m.Mutate(context.Background(), pod, "default")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if patches == nil {
+		t.Fatal("expected patches")
+	}
+
+	// nvidia.com/gpu should NOT be removed
+	for _, p := range patches {
+		if p.Op == "remove" && p.Path == "/spec/containers/0/resources/requests/nvidia.com~1gpu" {
+			t.Error("should not remove non-composite resources")
+		}
 	}
 }

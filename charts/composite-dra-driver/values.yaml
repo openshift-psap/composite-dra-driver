@@ -29,8 +29,10 @@ webhook:
     pullPolicy: Always
   replicas: 2
   port: 8443
-  deviceClassName: composite-gpu-nic
-  resourceName: "composite.dra/gpu-nic-pair"
+  # DEPRECATED: use per-composition deviceClassName/extendedResourceName in compositions[] instead.
+  # Kept for backward compatibility with single-composition configs.
+  # deviceClassName: composite-gpu-nic
+  # resourceName: "composite.dra/gpu-nic-pair"
   resources:
     requests:
       cpu: 25m
@@ -78,12 +80,14 @@ webhook:
 
 imagePullSecrets: []
 
-deviceClass:
-  name: composite-gpu-nic
-  selector: 'device.driver == "composite.dra.example.io"'
-  # Auto-populated when webhook is not needed (K8s >=1.36 or webhook.mode=disabled).
-  # Set explicitly to override the auto-generated value.
-  extendedResourceName: ""
+# DEPRECATED: DeviceClasses are now auto-generated per composition.
+# Each composition produces a DeviceClass named "composite-<composition.name>"
+# with a CEL selector filtering by compositionName attribute.
+# Override per composition with deviceClassName/extendedResourceName fields.
+# deviceClass:
+#   name: composite-gpu-nic
+#   selector: 'device.driver == "composite.dra.example.io"'
+#   extendedResourceName: ""
 
 sources:
   - name: gpu
@@ -105,6 +109,8 @@ sources:
 
 compositions:
   - name: "gpu-nic-pair"
+    # deviceClassName: "composite-gpu-nic-pair"        # optional, defaults to "composite-<name>"
+    # extendedResourceName: ""                          # optional, defaults to "<driver.name>/<name>"
     members:
       - source: gpu
         count: 1
@@ -118,6 +124,10 @@ compositions:
         cel: 'device.attributes["dra.net"].rdma == true'
     pairingMode: "auto"
     transportMode: "ethernet"
+  - name: "gpu"
+    members:
+      - source: gpu
+        count: 1
 
 railConfig:
   interfacePrefix: "net"

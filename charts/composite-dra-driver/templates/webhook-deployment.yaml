@@ -32,8 +32,9 @@ spec:
             - --port={{ .Values.webhook.port }}
             - --tls-cert=/etc/webhook/certs/tls.crt
             - --tls-key=/etc/webhook/certs/tls.key
-            - --device-class={{ .Values.webhook.deviceClassName }}
-            - --resource-name={{ .Values.webhook.resourceName }}
+            {{- range .Values.compositions }}
+            - --resource-mapping={{ printf "%s/%s=%s" $.Values.driver.name .name (.deviceClassName | default (printf "composite-%s" .name)) }}
+            {{- end }}
           ports:
             - containerPort: {{ .Values.webhook.port }}
               name: https

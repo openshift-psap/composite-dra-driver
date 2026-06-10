@@ -3,23 +3,24 @@
 ## Install
 
 ```bash
-# Driver only (no webhook)
+# Driver only (webhook auto-detected by K8s version)
 helm install composite charts/composite-dra-driver \
   -n composite-dra-system \
+  --create-namespace \
   -f charts/composite-dra-driver/values-poseidon.yaml
 
-# Driver + webhook
+# Driver + webhook explicitly enabled
 helm install composite charts/composite-dra-driver \
   -n composite-dra-system \
+  --create-namespace \
   -f charts/composite-dra-driver/values-poseidon.yaml \
-  --set webhook.enabled=true \
-  --set webhook.tls.certManager.issuerRef.name=<issuer-name>
+  --set webhook.mode=enabled
 
 # Upgrade (e.g., enable webhook later)
 helm upgrade composite charts/composite-dra-driver \
   -n composite-dra-system \
   -f charts/composite-dra-driver/values-poseidon.yaml \
-  --set webhook.enabled=true
+  --set webhook.mode=enabled
 ```
 
 ## Request GPU-NIC Pairs
@@ -154,6 +155,10 @@ Key settings:
 | `webhook.enabled` | Deploy webhook (default: false) |
 | `openshift.scc.enabled` | Create SCC for hostPath (OCP only) |
 | `deviceClass.extendedResourceName` | Enable extended resource UX (K8s 1.35+) |
+
+## Known Limitations
+
+**Device sharing conflict across compositions (#28):** When multiple compositions share a source (e.g. GPU appears in both `gpu` and `gpu-nic-pair`), the scheduler can allocate the same physical device to both compositions on the same node. The underlying driver rejects the second allocation. This happens because each composition publishes an independent pool — the scheduler has no cross-pool mutual exclusion. Safe to use when pods land on different nodes or only one composition is actively used at a time. Fix requires pairer-side device partitioning.
 
 ## Troubleshooting
 
