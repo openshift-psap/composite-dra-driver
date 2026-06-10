@@ -30,12 +30,28 @@ type AttributeGroup struct {
 
 // CompositionConfig defines how devices from multiple sources are combined.
 type CompositionConfig struct {
-	Name          string                       `json:"name"`
-	Members       []MemberConfig               `json:"members"`
-	Constraints   []ConstraintConfig           `json:"constraints"`
-	Filters       map[string]FilterConfig      `json:"filters,omitempty"`
-	PairingMode   string                       `json:"pairingMode,omitempty"`
-	TransportMode string                       `json:"transportMode,omitempty"`
+	Name                 string                       `json:"name"`
+	Members              []MemberConfig               `json:"members"`
+	Constraints          []ConstraintConfig           `json:"constraints"`
+	Filters              map[string]FilterConfig      `json:"filters,omitempty"`
+	PairingMode          string                       `json:"pairingMode,omitempty"`
+	TransportMode        string                       `json:"transportMode,omitempty"`
+	DeviceClassName      string                       `json:"deviceClassName,omitempty"`
+	ExtendedResourceName string                       `json:"extendedResourceName,omitempty"`
+}
+
+func (c *CompositionConfig) EffectiveDeviceClassName() string {
+	if c.DeviceClassName != "" {
+		return c.DeviceClassName
+	}
+	return "composite-" + c.Name
+}
+
+func (c *CompositionConfig) EffectiveExtendedResourceName(driverName string) string {
+	if c.ExtendedResourceName != "" {
+		return c.ExtendedResourceName
+	}
+	return driverName + "/" + c.Name
 }
 
 type MemberConfig struct {

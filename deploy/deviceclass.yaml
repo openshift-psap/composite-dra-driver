@@ -1,8 +1,8 @@
 apiVersion: resource.k8s.io/v1
 kind: DeviceClass
 metadata:
-  name: composite-gpu-nic
+  name: composite-gpu-nic-pair
 spec:
   selectors:
     - cel:
-        expression: 'device.driver == "composite.dra.example.io"'
+        expression: 'device.driver == "composite.dra.example.io" && device.attributes["composite"].compositionName == "gpu-nic-pair"'

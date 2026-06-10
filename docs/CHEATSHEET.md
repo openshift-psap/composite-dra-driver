@@ -3,23 +3,24 @@
 ## Install
 
 ```bash
-# Driver only (no webhook)
+# Driver only (webhook auto-detected by K8s version)
 helm install composite charts/composite-dra-driver \
   -n composite-dra-system \
+  --create-namespace \
   -f charts/composite-dra-driver/values-poseidon.yaml
 
-# Driver + webhook
+# Driver + webhook explicitly enabled
 helm install composite charts/composite-dra-driver \
   -n composite-dra-system \
+  --create-namespace \
   -f charts/composite-dra-driver/values-poseidon.yaml \
-  --set webhook.enabled=true \
-  --set webhook.tls.certManager.issuerRef.name=<issuer-name>
+  --set webhook.mode=enabled
 
 # Upgrade (e.g., enable webhook later)
 helm upgrade composite charts/composite-dra-driver \
   -n composite-dra-system \
   -f charts/composite-dra-driver/values-poseidon.yaml \
-  --set webhook.enabled=true
+  --set webhook.mode=enabled
 ```
 
 ## Request GPU-NIC Pairs

@@ -27,7 +27,7 @@ webhooks:
         expression: >-
           object.spec.containers.exists(c,
             has(c.resources) && has(c.resources.requests) &&
-            {{ .Values.webhook.resourceName | quote }} in c.resources.requests)
+            ({{ range $i, $comp := .Values.compositions }}{{ if $i }} || {{ end }}{{ printf "%s/%s" $.Values.driver.name $comp.name | quote }} in c.resources.requests{{ end }}))
     clientConfig:
       service:
         name: {{ include "composite-dra.fullname" . }}-webhook

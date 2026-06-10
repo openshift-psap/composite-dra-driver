@@ -1,15 +1,18 @@
+{{- range .Values.compositions }}
+---
 apiVersion: resource.k8s.io/v1
 kind: DeviceClass
 metadata:
-  name: {{ .Values.deviceClass.name }}
+  name: {{ .deviceClassName | default (printf "composite-%s" .name) }}
   labels:
-    {{- include "composite-dra.labels" . | nindent 4 }}
+    {{- include "composite-dra.labels" $ | nindent 4 }}
 spec:
   selectors:
     - cel:
-        expression: {{ .Values.deviceClass.selector | quote }}
-  {{- if ne (include "composite-dra.webhookNeeded" .) "true" }}
-  extendedResourceName: {{ .Values.deviceClass.extendedResourceName | default (printf "%s/%s" .Values.driver.name (index .Values.compositions 0).name) | quote }}
-  {{- else if .Values.deviceClass.extendedResourceName }}
-  extendedResourceName: {{ .Values.deviceClass.extendedResourceName | quote }}
+        expression: {{ printf "device.driver == %q && device.attributes[\"composite\"].compositionName == %q" $.Values.driver.name .name | quote }}
+  {{- if ne (include "composite-dra.webhookNeeded" $) "true" }}
+  extendedResourceName: {{ .extendedResourceName | default (printf "%s/%s" $.Values.driver.name .name) | quote }}
+  {{- else if .extendedResourceName }}
+  extendedResourceName: {{ .extendedResourceName | quote }}
   {{- end }}
+{{- end }}

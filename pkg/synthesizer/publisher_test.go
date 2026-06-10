@@ -64,7 +64,7 @@ func TestBuildResourceSlices_SplitsAtLimit(t *testing.T) {
 		devices[i] = CompositeDevice{
 			Name:       "dev-" + string(rune('a'+i%26)) + string(rune('0'+i/26)),
 			Attributes: map[string]resourceapi.DeviceAttribute{},
-			Mapping:    &store.DeviceMapping{},
+			Mapping:    &store.DeviceMapping{CompositionName: "test-comp"},
 		}
 	}
 
@@ -87,10 +87,10 @@ func TestBuildResourceSlices_SplitsAtLimit(t *testing.T) {
 
 func TestBuildResourceSlices_PoolName(t *testing.T) {
 	devices := []CompositeDevice{
-		{Name: "d", Attributes: map[string]resourceapi.DeviceAttribute{}, Mapping: &store.DeviceMapping{}},
+		{Name: "d", Attributes: map[string]resourceapi.DeviceAttribute{}, Mapping: &store.DeviceMapping{CompositionName: "gpu-nic-pair"}},
 	}
 	slices := BuildResourceSlices("composite.dra.example.io", "worker-3", devices)
-	expected := "composite.dra.example.io-worker-3"
+	expected := "composite.dra.example.io-worker-3-gpu-nic-pair"
 	if slices[0].Pool.Name != expected {
 		t.Errorf("pool name = %s, want %s", slices[0].Pool.Name, expected)
 	}
@@ -99,9 +99,40 @@ func TestBuildResourceSlices_PoolName(t *testing.T) {
 func TestLogPublisher(t *testing.T) {
 	p := &LogPublisher{}
 	err := p.Publish("test-driver", "node-1", []CompositeDevice{
-		{Name: "d", Attributes: map[string]resourceapi.DeviceAttribute{}, Mapping: &store.DeviceMapping{}},
+		{Name: "d", Attributes: map[string]resourceapi.DeviceAttribute{}, Mapping: &store.DeviceMapping{CompositionName: "comp"}},
 	})
 	if err != nil {
 		t.Fatalf("log publisher should not error: %v", err)
+	}
+}
+
+func TestBuildResourceSlices_MultipleCompositions(t *testing.T) {
+	devices := []CompositeDevice{
+		{Name: "gpu0--nic0", Attributes: map[string]resourceapi.DeviceAttribute{},
+			Mapping: &store.DeviceMapping{CompositionName: "gpu-nic-pair"}},
+		{Name: "gpu1--nic1", Attributes: map[string]resourceapi.DeviceAttribute{},
+			Mapping: &store.DeviceMapping{CompositionName: "gpu-nic-pair"}},
+		{Name: "gpu2--fpga0", Attributes: map[string]resourceapi.DeviceAttribute{},
+			Mapping: &store.DeviceMapping{CompositionName: "gpu-fpga-pair"}},
+	}
+
+	slices := BuildResourceSlices("composite.dra.example.io", "node-1", devices)
+
+	poolDeviceCounts := map[string]int{}
+	for _, s := range slices {
+		poolDeviceCounts[s.Pool.Name] += len(s.Devices)
+	}
+
+	nicPool := "composite.dra.example.io-node-1-gpu-nic-pair"
+	fpgaPool := "composite.dra.example.io-node-1-gpu-fpga-pair"
+
+	if poolDeviceCounts[nicPool] != 2 {
+		t.Errorf("gpu-nic-pair pool: expected 2 devices, got %d", poolDeviceCounts[nicPool])
+	}
+	if poolDeviceCounts[fpgaPool] != 1 {
+		t.Errorf("gpu-fpga-pair pool: expected 1 device, got %d", poolDeviceCounts[fpgaPool])
+	}
+	if len(poolDeviceCounts) != 2 {
+		t.Errorf("expected 2 pools, got %d", len(poolDeviceCounts))
 	}
 }

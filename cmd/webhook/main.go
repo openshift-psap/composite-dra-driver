@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -17,6 +18,25 @@ import (
 
 	"github.com/openshift-psap/composite-dra-driver/pkg/webhook"
 )
+
+type stringMapFlag map[string]string
+
+func (f *stringMapFlag) String() string {
+	var parts []string
+	for k, v := range *f {
+		parts = append(parts, k+"="+v)
+	}
+	return strings.Join(parts, ",")
+}
+
+func (f *stringMapFlag) Set(val string) error {
+	parts := strings.SplitN(val, "=", 2)
+	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+		return fmt.Errorf("invalid mapping %q, expected resourceName=deviceClassName", val)
+	}
+	(*f)[parts[0]] = parts[1]
+	return nil
+}
 
 func main() {
 	klog.InitFlags(nil)
@@ -30,13 +50,30 @@ func main() {
 		resourceName   string
 	)
 
+	resourceMappings := make(stringMapFlag)
+
 	flag.IntVar(&port, "port", 8443, "webhook server port")
 	flag.StringVar(&tlsCert, "tls-cert", "/etc/webhook/certs/tls.crt", "TLS certificate path")
 	flag.StringVar(&tlsKey, "tls-key", "/etc/webhook/certs/tls.key", "TLS key path")
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "path to kubeconfig (optional)")
-	flag.StringVar(&deviceClass, "device-class", "composite-gpu-nic", "composite DeviceClass name")
-	flag.StringVar(&resourceName, "resource-name", "composite.dra/gpu-nic-pair", "synthetic resource name to intercept")
+	flag.StringVar(&deviceClass, "device-class", "", "composite DeviceClass name (deprecated: use --resource-mapping)")
+	flag.StringVar(&resourceName, "resource-name", "", "synthetic resource name to intercept (deprecated: use --resource-mapping)")
+	flag.Var(&resourceMappings, "resource-mapping", "resourceName=deviceClassName mapping (repeatable)")
 	flag.Parse()
+
+	// Backward compatibility: if old flags set and no --resource-mapping, build mapping from them
+	if len(resourceMappings) == 0 {
+		if deviceClass == "" {
+			deviceClass = "composite-gpu-nic"
+		}
+		if resourceName == "" {
+			resourceName = "composite.dra/gpu-nic-pair"
+		}
+		if deviceClass != "" || resourceName != "" {
+			klog.Warning("--device-class and --resource-name are deprecated, use --resource-mapping instead")
+		}
+		resourceMappings[resourceName] = deviceClass
+	}
 
 	restConfig, err := buildRESTConfig(kubeconfig)
 	if err != nil {
@@ -49,8 +86,7 @@ func main() {
 	}
 
 	mutator := webhook.NewMutator(webhook.MutatorConfig{
-		DeviceClassName: deviceClass,
-		ResourceName:    resourceName,
+		ResourceMappings: map[string]string(resourceMappings),
 	}, kubeClient.ResourceV1())
 
 	handler := webhook.NewHandler(mutator)
@@ -81,7 +117,7 @@ func main() {
 	defer cancel()
 
 	go func() {
-		klog.Infof("webhook starting on :%d (deviceClass=%s, resourceName=%s)", port, deviceClass, resourceName)
+		klog.Infof("webhook starting on :%d (mappings=%v)", port, resourceMappings)
 		if err := server.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
 			klog.Fatalf("server: %v", err)
 		}

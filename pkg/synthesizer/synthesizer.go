@@ -66,8 +66,8 @@ func (s *Synthesizer) recompute() {
 	klog.Infof("synthesizer: computed %d composite devices from %d source devices", len(compositeDevices), totalDevices)
 
 	newMappings := make(map[string]*store.DeviceMapping, len(compositeDevices))
-	poolName := fmt.Sprintf("%s-%s", s.cfg.Driver.Name, s.nodeName)
 	for _, cd := range compositeDevices {
+		poolName := PoolName(s.cfg.Driver.Name, s.nodeName, cd.Mapping.CompositionName)
 		newMappings[fmt.Sprintf("%s/%s", poolName, cd.Name)] = cd.Mapping
 	}
 	s.store.ReplaceAll(newMappings)
