@@ -30,7 +30,7 @@ This is a Kubernetes **Dynamic Resource Allocation (DRA)** driver that composes 
 **Driver** (`cmd/driver/main.go`) — DaemonSet on every node. Registers as a kubelet DRA plugin via gRPC socket. Pipeline:
 
 1. **Synthesizer** watches underlying drivers' ResourceSlices via informers
-2. **Pairer** groups devices across sources using `matchAttribute` constraints (e.g. same PCIe root) and CEL filters
+2. **Pairer** groups devices across sources using `matchAttribute` constraints (e.g. same PCIe root), CEL filters, or explicit CEL-based pairs per MachineConfigPool
 3. **Publisher** builds composite ResourceSlices (splits at 128-device K8s limit) and publishes via kubelet helper
 4. **DeviceStore** maps composite device names → underlying device members (thread-safe, in-memory)
 5. On allocation, **CompositePlugin.Prepare** creates **shadow ResourceClaims** for each underlying driver with pre-filled allocation, then calls each driver's gRPC `NodePrepareResources`
@@ -65,7 +65,15 @@ Config YAML (`/etc/composite-dra/config.yaml` in-cluster) defines:
 - `driver.name` — composite driver name (e.g. `composite.dra.llm-d.io`)
 - `sources[]` — underlying drivers with forwarded attributes
 - `compositions[]` — pairing rules: which sources, member counts, matchAttribute constraints, CEL filters
+- `compositions[].pairingMode` — `auto` (default, attribute-based) or `explicit` (CEL selectors per MachineConfigPool)
+- `compositions[].nodePoolLabelKey` + `nodePools[]` — explicit mode: group CEL-based device pairs by node pool label value
 - `railConfig` — per-rail NIC config (subnet, gateway, MTU, routing table) embedded in shadow claims as opaque params
+
+## Pairing Modes
+
+**Auto** (`pairingMode: auto`) — devices grouped by shared attribute values (e.g. `pcieRoot`). Works on bare-metal/IBM where PCIe topology is visible.
+
+**Explicit** (`pairingMode: explicit`) — admin specifies exact device pairs using CEL selectors per MachineConfigPool label. Required on AKS/cloud VMs where `pcieRoot` isn't exposed. Each pair maps source names to CEL expressions matching device attributes (e.g. `pciBusID`, `pciAddress`). Consumed-device tracking prevents double-allocation. Rail and NUMA are set explicitly per pair.
 
 ## Deployment
 

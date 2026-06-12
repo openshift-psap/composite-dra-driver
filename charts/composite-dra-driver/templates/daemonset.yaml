@@ -44,6 +44,9 @@ spec:
           operator: Exists
           effect: NoExecute
           tolerationSeconds: 300
+        {{- with .Values.driver.tolerations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
       containers:
         - name: driver
           image: "{{ .Values.driver.image.repository }}:{{ .Values.driver.image.tag }}"

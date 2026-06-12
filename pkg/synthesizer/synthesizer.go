@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
 
@@ -27,11 +28,13 @@ type Synthesizer struct {
 }
 
 func New(cfg *config.CompositeConfig, nodeName string, kubeClient kubernetes.Interface, deviceStore *store.DeviceStore, publisher ResourcePublisher) *Synthesizer {
+	nodeLabels := fetchNodeLabels(kubeClient, nodeName)
+
 	s := &Synthesizer{
 		cfg:       cfg,
 		nodeName:  nodeName,
 		kubeClient: kubeClient,
-		pairer:    NewPairer(cfg.Sources, cfg.Compositions),
+		pairer:    NewPairer(cfg.Sources, cfg.Compositions, nodeLabels),
 		publisher: publisher,
 		store:     deviceStore,
 	}
@@ -44,6 +47,15 @@ func New(cfg *config.CompositeConfig, nodeName string, kubeClient kubernetes.Int
 	s.watcher = NewWatcher(kubeClient, nodeName, sourceDrivers, s.recompute)
 
 	return s
+}
+
+func fetchNodeLabels(kubeClient kubernetes.Interface, nodeName string) map[string]string {
+	node, err := kubeClient.CoreV1().Nodes().Get(context.Background(), nodeName, metav1.GetOptions{})
+	if err != nil {
+		klog.Warningf("synthesizer: could not fetch node labels for %s: %v", nodeName, err)
+		return nil
+	}
+	return node.Labels
 }
 
 func (s *Synthesizer) Start(ctx context.Context) error {
