@@ -1,3 +1,6 @@
+// Copyright 2026 Red Hat, LLC. and/or its affiliates
+// SPDX-License-Identifier: Apache-2.0
+
 package config
 
 // CompositeConfig is the top-level configuration for the composite DRA driver.
