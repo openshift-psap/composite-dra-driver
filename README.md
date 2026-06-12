@@ -167,7 +167,7 @@ See [values.yaml](charts/composite-dra-driver/values.yaml) for all options.
 
 - **No NUMA affinity enforcement** — composite devices carry `numaNode` as an attribute but the webhook does not generate MatchAttribute constraints. NUMA packing requires manual ResourceClaimTemplates with explicit constraints. ([#1](https://github.com/openshift-psap/composite-dra-driver/issues/1), [Discussion #11](https://github.com/openshift-psap/composite-dra-driver/discussions/11))
 
-- **Single composition type** — all composite devices share one DeviceClass. Can't request different composition types (e.g., GPU-NIC and GPU-FPGA) independently in the same cluster. ([#16](https://github.com/openshift-psap/composite-dra-driver/issues/16))
+- **Device sharing conflict across compositions** — when multiple compositions share a source (e.g. GPU appears in both `gpu` and `gpu-nic-pair`), the scheduler can allocate the same physical device to both compositions on the same node. Each composition publishes an independent pool — the scheduler has no cross-pool mutual exclusion. Safe when pods land on different nodes or only one composition is actively used at a time. Fix requires pairer-side device partitioning. ([#28](https://github.com/openshift-psap/composite-dra-driver/issues/28))
 
 - **NIC config coupled to dranet** — `RailConfig` and shadow claim opaque parameters use dranet's internal JSON format. Other NIC drivers would require code changes. ([#9](https://github.com/openshift-psap/composite-dra-driver/issues/9))
 
