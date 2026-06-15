@@ -37,9 +37,10 @@ type Pairer struct {
 	sources      map[string]*config.SourceConfig
 	compositions []config.CompositionConfig
 	celFilter    *CELFilter
+	nodeLabels   map[string]string
 }
 
-func NewPairer(sources []config.SourceConfig, compositions []config.CompositionConfig) *Pairer {
+func NewPairer(sources []config.SourceConfig, compositions []config.CompositionConfig, nodeLabels map[string]string) *Pairer {
 	srcMap := make(map[string]*config.SourceConfig, len(sources))
 	for i := range sources {
 		srcMap[sources[i].Name] = &sources[i]
@@ -52,6 +53,7 @@ func NewPairer(sources []config.SourceConfig, compositions []config.CompositionC
 		sources:      srcMap,
 		compositions: compositions,
 		celFilter:    celFilter,
+		nodeLabels:   nodeLabels,
 	}
 }
 
@@ -73,6 +75,10 @@ func (p *Pairer) computeForComposition(comp config.CompositionConfig, devicesByS
 			devices = p.applyFilter(devices, f)
 		}
 		filtered[member.Source] = devices
+	}
+
+	if comp.PairingMode == "explicit" {
+		return p.pairWithExplicit(comp, filtered)
 	}
 
 	if len(comp.Constraints) == 0 {
@@ -144,6 +150,96 @@ func (p *Pairer) pairWithoutConstraints(comp config.CompositionConfig, devicesBy
 	sort.Slice(result, func(i, j int) bool {
 		return result[i].Name < result[j].Name
 	})
+	return result
+}
+
+func (p *Pairer) pairWithExplicit(comp config.CompositionConfig, devicesBySource map[string][]SourceDevice) []CompositeDevice {
+	if p.celFilter == nil {
+		klog.Errorf("pairer: explicit pairing requires CEL filter but it is nil")
+		return nil
+	}
+
+	nodePoolValue := p.nodeLabels[comp.NodePoolLabelKey]
+	var pool *config.ExplicitNodePool
+	for i := range comp.NodePools {
+		if comp.NodePools[i].Label == nodePoolValue {
+			pool = &comp.NodePools[i]
+			break
+		}
+	}
+	if pool == nil {
+		klog.V(2).Infof("pairer: explicit mode: no pool matches node label %s=%q", comp.NodePoolLabelKey, nodePoolValue)
+		return nil
+	}
+
+	consumed := make(map[string]map[string]bool)
+	for _, member := range comp.Members {
+		consumed[member.Source] = make(map[string]bool)
+	}
+
+	var result []CompositeDevice
+	for i, ep := range pool.Pairs {
+		combo := make(map[string][]SourceDevice)
+		valid := true
+
+		for _, member := range comp.Members {
+			sel, ok := ep.Selectors[member.Source]
+			if !ok {
+				klog.Warningf("pairer: explicit pair %d missing selector for source %q", i, member.Source)
+				valid = false
+				break
+			}
+
+			var matched []SourceDevice
+			for _, dev := range devicesBySource[member.Source] {
+				if consumed[member.Source][dev.DeviceName] {
+					continue
+				}
+				if p.celFilter.Match(sel, dev.Attributes) {
+					matched = append(matched, dev)
+				}
+			}
+
+			if len(matched) < member.Count {
+				klog.V(2).Infof("pairer: explicit pair %d: source %q matched %d devices, need %d",
+					i, member.Source, len(matched), member.Count)
+				valid = false
+				break
+			}
+			if len(matched) > member.Count {
+				klog.Warningf("pairer: explicit pair %d: source %q selector matched %d devices (need %d), using first %d — use a more specific selector for deterministic pairing",
+					i, member.Source, len(matched), member.Count, member.Count)
+			}
+
+			combo[member.Source] = matched[:member.Count]
+		}
+
+		if !valid {
+			continue
+		}
+
+		for src, devs := range combo {
+			for _, dev := range devs {
+				consumed[src][dev.DeviceName] = true
+			}
+		}
+
+		cd := p.buildCompositeDevice(comp, combo)
+		cd.Mapping.RailIndex = ep.Rail
+		cd.Mapping.NUMANode = ep.NUMA
+		numaVal := int64(ep.NUMA)
+		cd.Attributes["composite/numaNode"] = resourceapi.DeviceAttribute{IntValue: &numaVal}
+		railVal := int64(ep.Rail)
+		cd.Attributes["composite/railIndex"] = resourceapi.DeviceAttribute{IntValue: &railVal}
+
+		result = append(result, cd)
+	}
+
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].Name < result[j].Name
+	})
+
+	klog.Infof("pairer: explicit mode produced %d/%d pairs for pool %q", len(result), len(pool.Pairs), pool.Label)
 	return result
 }
 

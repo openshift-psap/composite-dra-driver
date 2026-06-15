@@ -26,12 +26,17 @@ jobs:
       - name: Get PR ref
         id: pr
         run: |
-          PR_NUMBER=${{ github.event.issue.number }}
           echo "number=$PR_NUMBER" >> $GITHUB_OUTPUT
           PR_DATA=$(gh api repos/${{ github.repository }}/pulls/$PR_NUMBER)
+          HEAD_REPO_FORK=$(echo $PR_DATA | jq -r .head.repo.fork)
+          if [ "$HEAD_REPO_FORK" = "true" ]; then
+            echo "::error::Refusing to build fork PR"
+            exit 1
+          fi
           echo "ref=$(echo $PR_DATA | jq -r .head.ref)" >> $GITHUB_OUTPUT
           echo "sha=$(echo $PR_DATA | jq -r .head.sha)" >> $GITHUB_OUTPUT
         env:
+          PR_NUMBER: ${{ github.event.issue.number }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: actions/checkout@v4
@@ -53,10 +58,19 @@ jobs:
             ghcr.io/${{ github.repository_owner }}/composite-dra-${{ matrix.component }}:pr-${{ steps.pr.outputs.number }}
             ghcr.io/${{ github.repository_owner }}/composite-dra-${{ matrix.component }}:${{ steps.pr.outputs.sha }}
 
+      - name: Generate app token
+        if: matrix.component == 'driver'
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
       - name: Comment image tag
         if: matrix.component == 'driver'
         uses: peter-evans/create-or-update-comment@v4
         with:
+          token: ${{ steps.app-token.outputs.token }}
           issue-number: ${{ steps.pr.outputs.number }}
           body: |
             Images built and pushed:

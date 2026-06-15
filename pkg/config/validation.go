@@ -89,6 +89,61 @@ func Validate(cfg *CompositeConfig) error {
 		if pm != "" && pm != "auto" && pm != "explicit" {
 			return fmt.Errorf("compositions[%d].pairingMode must be auto or explicit", i)
 		}
+
+		if pm == "explicit" {
+			if len(comp.NodePools) == 0 {
+				return fmt.Errorf("compositions[%d]: pairingMode explicit requires at least one nodePools entry", i)
+			}
+			if comp.NodePoolLabelKey == "" {
+				return fmt.Errorf("compositions[%d]: pairingMode explicit requires nodePoolLabelKey", i)
+			}
+			if len(comp.Constraints) > 0 {
+				return fmt.Errorf("compositions[%d]: pairingMode explicit cannot be used with constraints", i)
+			}
+			memberSources := make(map[string]bool, len(comp.Members))
+			for _, m := range comp.Members {
+				memberSources[m.Source] = true
+			}
+			poolLabels := make(map[string]bool)
+			for j, np := range comp.NodePools {
+				if np.Label == "" {
+					return fmt.Errorf("compositions[%d].nodePools[%d].label is required", i, j)
+				}
+				if poolLabels[np.Label] {
+					return fmt.Errorf("compositions[%d].nodePools[%d]: duplicate label %q", i, j, np.Label)
+				}
+				poolLabels[np.Label] = true
+				if len(np.Pairs) == 0 {
+					return fmt.Errorf("compositions[%d].nodePools[%d]: at least one pair is required", i, j)
+				}
+				for k, ep := range np.Pairs {
+					for src, celExpr := range ep.Selectors {
+						if !sourceNames[src] {
+							return fmt.Errorf("compositions[%d].nodePools[%d].pairs[%d].selectors references unknown source %q", i, j, k, src)
+						}
+						if !memberSources[src] {
+							return fmt.Errorf("compositions[%d].nodePools[%d].pairs[%d].selectors references source %q not in members", i, j, k, src)
+						}
+						if celExpr == "" {
+							return fmt.Errorf("compositions[%d].nodePools[%d].pairs[%d].selectors[%s]: CEL expression is required", i, j, k, src)
+						}
+					}
+					for src := range memberSources {
+						if _, ok := ep.Selectors[src]; !ok {
+							return fmt.Errorf("compositions[%d].nodePools[%d].pairs[%d].selectors missing required source %q", i, j, k, src)
+						}
+					}
+					if ep.Rail < 0 {
+						return fmt.Errorf("compositions[%d].nodePools[%d].pairs[%d].rail must be >= 0", i, j, k)
+					}
+					if ep.NUMA < 0 {
+						return fmt.Errorf("compositions[%d].nodePools[%d].pairs[%d].numa must be >= 0", i, j, k)
+					}
+				}
+			}
+		} else if len(comp.NodePools) > 0 {
+			return fmt.Errorf("compositions[%d]: nodePools requires pairingMode explicit", i)
+		}
 		tm := comp.TransportMode
 		if tm != "" && tm != "auto" && tm != "ethernet" && tm != "infiniband" {
 			return fmt.Errorf("compositions[%d].transportMode must be auto, ethernet, or infiniband", i)

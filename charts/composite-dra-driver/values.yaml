@@ -124,6 +124,28 @@ compositions:
         cel: 'device.attributes["dra.net"].rdma == true'
     pairingMode: "auto"
     transportMode: "ethernet"
+    # Explicit pairing mode: use CEL selectors to manually pair devices.
+    # Set pairingMode: "explicit" and define nodePools with per-pool pairs.
+    # Each pair's selectors map source names to CEL expressions that select
+    # devices by attribute values (e.g. PCI bus ID).
+    #
+    # Selector behavior:
+    #   - A selector that matches exactly one device is deterministic.
+    #   - A selector that matches multiple devices picks the first available
+    #     (non-deterministic). Consumed devices are excluded from later pairs,
+    #     so broad selectors still produce unique assignments — but which device
+    #     lands in which pair depends on ResourceSlice ordering.
+    #   - For deterministic pairing, use exact-match selectors (e.g. pciBusID).
+    #
+    # nodePoolLabelKey: "node.kubernetes.io/instance-type"
+    # nodePools:
+    #   - label: "Standard_ND96isr_H100_v5"
+    #     pairs:
+    #       - selectors:
+    #           gpu: 'device.attributes["resource.kubernetes.io"].pciBusID == "0001:00:00.0"'
+    #           nic: 'device.attributes["dra.net"].pciAddress == "0101:00:00.0"'
+    #         rail: 0
+    #         numa: 0
   - name: "gpu"
     members:
       - source: gpu

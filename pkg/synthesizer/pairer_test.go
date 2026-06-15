@@ -61,7 +61,7 @@ func testCompositions() []config.CompositionConfig {
 }
 
 func TestPairer_BasicPairing(t *testing.T) {
-	pairer := NewPairer(testSources(), testCompositions())
+	pairer := NewPairer(testSources(), testCompositions(), nil)
 
 	devices := map[string][]SourceDevice{
 		"gpu": {
@@ -107,7 +107,7 @@ func TestPairer_BasicPairing(t *testing.T) {
 }
 
 func TestPairer_NoPairingWhenPCIeRootMismatch(t *testing.T) {
-	pairer := NewPairer(testSources(), testCompositions())
+	pairer := NewPairer(testSources(), testCompositions(), nil)
 
 	devices := map[string][]SourceDevice{
 		"gpu": {
@@ -135,7 +135,7 @@ func TestPairer_NoPairingWhenPCIeRootMismatch(t *testing.T) {
 }
 
 func TestPairer_MultiplePairsOnSameRoot(t *testing.T) {
-	pairer := NewPairer(testSources(), testCompositions())
+	pairer := NewPairer(testSources(), testCompositions(), nil)
 
 	devices := map[string][]SourceDevice{
 		"gpu": {
@@ -160,7 +160,7 @@ func TestPairer_MultiplePairsOnSameRoot(t *testing.T) {
 }
 
 func TestPairer_MultipleRoots(t *testing.T) {
-	pairer := NewPairer(testSources(), testCompositions())
+	pairer := NewPairer(testSources(), testCompositions(), nil)
 
 	devices := map[string][]SourceDevice{
 		"gpu": {
@@ -185,7 +185,7 @@ func TestPairer_MultipleRoots(t *testing.T) {
 }
 
 func TestPairer_NoNICs(t *testing.T) {
-	pairer := NewPairer(testSources(), testCompositions())
+	pairer := NewPairer(testSources(), testCompositions(), nil)
 
 	devices := map[string][]SourceDevice{
 		"gpu": {
@@ -201,7 +201,7 @@ func TestPairer_NoNICs(t *testing.T) {
 }
 
 func TestPairer_AttributeForwarding(t *testing.T) {
-	pairer := NewPairer(testSources(), testCompositions())
+	pairer := NewPairer(testSources(), testCompositions(), nil)
 
 	devices := map[string][]SourceDevice{
 		"gpu": {
@@ -291,7 +291,7 @@ func TestPairer_MultipleCompositions(t *testing.T) {
 		},
 	}
 
-	pairer := NewPairer(sources, compositions)
+	pairer := NewPairer(sources, compositions, nil)
 
 	devices := map[string][]SourceDevice{
 		"gpu": {
@@ -355,7 +355,7 @@ func TestPairer_SingleMemberComposition(t *testing.T) {
 		},
 	}
 
-	pairer := NewPairer(sources, compositions)
+	pairer := NewPairer(sources, compositions, nil)
 
 	devices := map[string][]SourceDevice{
 		"gpu": {
@@ -388,6 +388,286 @@ func TestPairer_SingleMemberComposition(t *testing.T) {
 		if v, ok := cd.Attributes["gpu/model"]; !ok || *v.StringValue != "A100" {
 			t.Errorf("expected forwarded gpu/model=A100, got %v", cd.Attributes["gpu/model"])
 		}
+	}
+}
+
+func explicitCompositions(pools []config.ExplicitNodePool) []config.CompositionConfig {
+	return []config.CompositionConfig{
+		{
+			Name:             "gpu-nic-pair",
+			PairingMode:      "explicit",
+			NodePoolLabelKey: "node.kubernetes.io/instance-type",
+			Members: []config.MemberConfig{
+				{Source: "gpu", Count: 1},
+				{Source: "nic", Count: 1},
+			},
+			NodePools: pools,
+		},
+	}
+}
+
+func testExplicitDevices() map[string][]SourceDevice {
+	return map[string][]SourceDevice{
+		"gpu": {
+			{SourceName: "gpu", Driver: "gpu.nvidia.com", Pool: "p", DeviceName: "gpu-0",
+				Attributes: map[string]resourceapi.DeviceAttribute{
+					"resource.kubernetes.io/pciBusID": strAttr("0000:0c:00.0"),
+					"resource.kubernetes.io/pcieRoot": strAttr("root-0"),
+				}},
+			{SourceName: "gpu", Driver: "gpu.nvidia.com", Pool: "p", DeviceName: "gpu-1",
+				Attributes: map[string]resourceapi.DeviceAttribute{
+					"resource.kubernetes.io/pciBusID": strAttr("0000:43:00.0"),
+					"resource.kubernetes.io/pcieRoot": strAttr("root-1"),
+				}},
+		},
+		"nic": {
+			{SourceName: "nic", Driver: "dra.net", Pool: "p", DeviceName: "nic-0",
+				Attributes: map[string]resourceapi.DeviceAttribute{
+					"dra.net/pciAddress": strAttr("0000:0d:00.0"),
+					"dra.net/rdma":       boolAttr(true),
+				}},
+			{SourceName: "nic", Driver: "dra.net", Pool: "p", DeviceName: "nic-1",
+				Attributes: map[string]resourceapi.DeviceAttribute{
+					"dra.net/pciAddress": strAttr("0000:44:00.0"),
+					"dra.net/rdma":       boolAttr(true),
+				}},
+		},
+	}
+}
+
+func TestPairer_ExplicitPairing_Basic(t *testing.T) {
+	pools := []config.ExplicitNodePool{
+		{
+			Label: "gpu-h100",
+			Pairs: []config.ExplicitPairConfig{
+				{
+					Selectors: map[string]string{
+						"gpu": `device.attributes["resource.kubernetes.io"].pciBusID == "0000:0c:00.0"`,
+						"nic": `device.attributes["dra.net"].pciAddress == "0000:0d:00.0"`,
+					},
+					Rail: 0, NUMA: 0,
+				},
+			},
+		},
+	}
+	nodeLabels := map[string]string{"node.kubernetes.io/instance-type": "gpu-h100"}
+	pairer := NewPairer(testSources(), explicitCompositions(pools), nodeLabels)
+
+	result := pairer.ComputePairs(testExplicitDevices())
+	if len(result) != 1 {
+		t.Fatalf("expected 1 pair, got %d", len(result))
+	}
+	if result[0].Mapping.Members[0].Device != "gpu-0" {
+		t.Errorf("expected gpu-0, got %s", result[0].Mapping.Members[0].Device)
+	}
+	if result[0].Mapping.Members[1].Device != "nic-0" {
+		t.Errorf("expected nic-0, got %s", result[0].Mapping.Members[1].Device)
+	}
+}
+
+func TestPairer_ExplicitPairing_NoMatch(t *testing.T) {
+	pools := []config.ExplicitNodePool{
+		{
+			Label: "gpu-h100",
+			Pairs: []config.ExplicitPairConfig{
+				{
+					Selectors: map[string]string{
+						"gpu": `device.attributes["resource.kubernetes.io"].pciBusID == "9999:99:99.0"`,
+						"nic": `device.attributes["dra.net"].pciAddress == "0000:0d:00.0"`,
+					},
+				},
+			},
+		},
+	}
+	nodeLabels := map[string]string{"node.kubernetes.io/instance-type": "gpu-h100"}
+	pairer := NewPairer(testSources(), explicitCompositions(pools), nodeLabels)
+
+	result := pairer.ComputePairs(testExplicitDevices())
+	if len(result) != 0 {
+		t.Fatalf("expected 0 pairs (GPU selector no match), got %d", len(result))
+	}
+}
+
+func TestPairer_ExplicitPairing_NoMatchingPool(t *testing.T) {
+	pools := []config.ExplicitNodePool{
+		{
+			Label: "gpu-h100",
+			Pairs: []config.ExplicitPairConfig{
+				{
+					Selectors: map[string]string{
+						"gpu": `device.attributes["resource.kubernetes.io"].pciBusID == "0000:0c:00.0"`,
+						"nic": `device.attributes["dra.net"].pciAddress == "0000:0d:00.0"`,
+					},
+				},
+			},
+		},
+	}
+	nodeLabels := map[string]string{"node.kubernetes.io/instance-type": "gpu-a100"}
+	pairer := NewPairer(testSources(), explicitCompositions(pools), nodeLabels)
+
+	result := pairer.ComputePairs(testExplicitDevices())
+	if len(result) != 0 {
+		t.Fatalf("expected 0 pairs (no matching pool), got %d", len(result))
+	}
+}
+
+func TestPairer_ExplicitPairing_MultiplePairs(t *testing.T) {
+	pools := []config.ExplicitNodePool{
+		{
+			Label: "gpu-h100",
+			Pairs: []config.ExplicitPairConfig{
+				{
+					Selectors: map[string]string{
+						"gpu": `device.attributes["resource.kubernetes.io"].pciBusID == "0000:0c:00.0"`,
+						"nic": `device.attributes["dra.net"].pciAddress == "0000:0d:00.0"`,
+					},
+					Rail: 0, NUMA: 0,
+				},
+				{
+					Selectors: map[string]string{
+						"gpu": `device.attributes["resource.kubernetes.io"].pciBusID == "0000:43:00.0"`,
+						"nic": `device.attributes["dra.net"].pciAddress == "0000:44:00.0"`,
+					},
+					Rail: 1, NUMA: 1,
+				},
+			},
+		},
+	}
+	nodeLabels := map[string]string{"node.kubernetes.io/instance-type": "gpu-h100"}
+	pairer := NewPairer(testSources(), explicitCompositions(pools), nodeLabels)
+
+	result := pairer.ComputePairs(testExplicitDevices())
+	if len(result) != 2 {
+		t.Fatalf("expected 2 pairs, got %d", len(result))
+	}
+}
+
+func TestPairer_ExplicitPairing_DeviceConsumed(t *testing.T) {
+	pools := []config.ExplicitNodePool{
+		{
+			Label: "gpu-h100",
+			Pairs: []config.ExplicitPairConfig{
+				{
+					Selectors: map[string]string{
+						"gpu": `device.attributes["resource.kubernetes.io"].pciBusID == "0000:0c:00.0"`,
+						"nic": `device.attributes["dra.net"].rdma == true`,
+					},
+					Rail: 0, NUMA: 0,
+				},
+				{
+					Selectors: map[string]string{
+						"gpu": `device.attributes["resource.kubernetes.io"].pciBusID == "0000:43:00.0"`,
+						"nic": `device.attributes["dra.net"].rdma == true`,
+					},
+					Rail: 1, NUMA: 1,
+				},
+			},
+		},
+	}
+	nodeLabels := map[string]string{"node.kubernetes.io/instance-type": "gpu-h100"}
+	pairer := NewPairer(testSources(), explicitCompositions(pools), nodeLabels)
+
+	result := pairer.ComputePairs(testExplicitDevices())
+	if len(result) != 2 {
+		t.Fatalf("expected 2 pairs, got %d", len(result))
+	}
+	nic0 := result[0].Mapping.Members[1].Device
+	nic1 := result[1].Mapping.Members[1].Device
+	if nic0 == nic1 {
+		t.Errorf("same NIC used in both pairs: %s", nic0)
+	}
+}
+
+func TestPairer_ExplicitPairing_RailAndNUMA(t *testing.T) {
+	pools := []config.ExplicitNodePool{
+		{
+			Label: "gpu-h100",
+			Pairs: []config.ExplicitPairConfig{
+				{
+					Selectors: map[string]string{
+						"gpu": `device.attributes["resource.kubernetes.io"].pciBusID == "0000:0c:00.0"`,
+						"nic": `device.attributes["dra.net"].pciAddress == "0000:0d:00.0"`,
+					},
+					Rail: 3, NUMA: 2,
+				},
+			},
+		},
+	}
+	nodeLabels := map[string]string{"node.kubernetes.io/instance-type": "gpu-h100"}
+	pairer := NewPairer(testSources(), explicitCompositions(pools), nodeLabels)
+
+	result := pairer.ComputePairs(testExplicitDevices())
+	if len(result) != 1 {
+		t.Fatalf("expected 1 pair, got %d", len(result))
+	}
+	if result[0].Mapping.RailIndex != 3 {
+		t.Errorf("expected RailIndex=3, got %d", result[0].Mapping.RailIndex)
+	}
+	if result[0].Mapping.NUMANode != 2 {
+		t.Errorf("expected NUMANode=2, got %d", result[0].Mapping.NUMANode)
+	}
+	if v, ok := result[0].Attributes["composite/railIndex"]; !ok || *v.IntValue != 3 {
+		t.Errorf("expected composite/railIndex=3, got %v", result[0].Attributes["composite/railIndex"])
+	}
+	if v, ok := result[0].Attributes["composite/numaNode"]; !ok || *v.IntValue != 2 {
+		t.Errorf("expected composite/numaNode=2, got %v", result[0].Attributes["composite/numaNode"])
+	}
+}
+
+func TestPairer_ExplicitPairing_WithFilter(t *testing.T) {
+	pools := []config.ExplicitNodePool{
+		{
+			Label: "gpu-h100",
+			Pairs: []config.ExplicitPairConfig{
+				{
+					Selectors: map[string]string{
+						"gpu": `device.attributes["resource.kubernetes.io"].pciBusID == "0000:0c:00.0"`,
+						"nic": `device.attributes["dra.net"].pciAddress == "0000:0d:00.0"`,
+					},
+				},
+			},
+		},
+	}
+	comps := explicitCompositions(pools)
+	comps[0].Filters = map[string]config.FilterConfig{
+		"nic": {CEL: `device.attributes["dra.net"].rdma == false`},
+	}
+	nodeLabels := map[string]string{"node.kubernetes.io/instance-type": "gpu-h100"}
+	pairer := NewPairer(testSources(), comps, nodeLabels)
+
+	result := pairer.ComputePairs(testExplicitDevices())
+	if len(result) != 0 {
+		t.Fatalf("expected 0 pairs (filter excludes all NICs), got %d", len(result))
+	}
+}
+
+func TestPairer_ExplicitPairing_AttributeForwarding(t *testing.T) {
+	pools := []config.ExplicitNodePool{
+		{
+			Label: "gpu-h100",
+			Pairs: []config.ExplicitPairConfig{
+				{
+					Selectors: map[string]string{
+						"gpu": `device.attributes["resource.kubernetes.io"].pciBusID == "0000:0c:00.0"`,
+						"nic": `device.attributes["dra.net"].pciAddress == "0000:0d:00.0"`,
+					},
+				},
+			},
+		},
+	}
+	nodeLabels := map[string]string{"node.kubernetes.io/instance-type": "gpu-h100"}
+	pairer := NewPairer(testSources(), explicitCompositions(pools), nodeLabels)
+
+	result := pairer.ComputePairs(testExplicitDevices())
+	if len(result) != 1 {
+		t.Fatalf("expected 1 pair, got %d", len(result))
+	}
+	attrs := result[0].Attributes
+	if v, ok := attrs["gpu/pciBusID"]; !ok || *v.StringValue != "0000:0c:00.0" {
+		t.Errorf("expected gpu/pciBusID forwarded")
+	}
+	if v, ok := attrs["nic/pciAddress"]; !ok || *v.StringValue != "0000:0d:00.0" {
+		t.Errorf("expected nic/pciAddress forwarded")
 	}
 }
 
