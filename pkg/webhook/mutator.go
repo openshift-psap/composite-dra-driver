@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	resourceapi "k8s.io/api/resource/v1"
@@ -89,7 +90,7 @@ func (m *Mutator) Mutate(ctx context.Context, pod *corev1.Pod, namespace string)
 
 	for _, resName := range compKeys {
 		cr := compMap[resName]
-		templateName := compositionTemplateName(pod.Name, cr.deviceClassName)
+		templateName := compositionTemplateName(podPrefix(pod), cr.deviceClassName)
 
 		claimSpec := BuildClaimSpec(cr.deviceClassName, cr.totalCount)
 		template := &resourceapi.ResourceClaimTemplate{
@@ -128,6 +129,13 @@ func (m *Mutator) Mutate(ctx context.Context, pod *corev1.Pod, namespace string)
 
 	patches := m.buildPatches(pod, matches, claims)
 	return patches, nil
+}
+
+func podPrefix(pod *corev1.Pod) string {
+	if pod.Name != "" {
+		return pod.Name
+	}
+	return strings.TrimRight(pod.GenerateName, "-")
 }
 
 func compositionTemplateName(podName, deviceClassName string) string {
