@@ -16,7 +16,7 @@ compositions:
         attribute: "resource.kubernetes.io/pcieRoot"
     filters:
       nic:
-        cel: 'device.attributes["dra.net"].rdma == true && !has(device.attributes["dra.net"].isSriovVf)'
+        cel: 'device.attributes["dra.net"].rdma == true && !has(device.attributes["dra.net"].isSriovVf) && !device.attributes["dra.net"].ipv4.startsWith("172.24.") && !device.attributes["dra.net"].ipv4.startsWith("172.25.")'
     pairingMode: "auto"
     transportMode: "ethernet"
   - name: "gpu"

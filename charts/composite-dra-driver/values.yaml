@@ -66,14 +66,19 @@ webhook:
     custom: []
   failurePolicy: Fail
   tls:
-    # Mode: "helm-generated" | "cert-manager" | "manual"
-    #   helm-generated: self-signed CA + cert via Helm genSignedCert (no dependencies)
-    #   cert-manager:   cert-manager Certificate CR (requires cert-manager + Issuer)
+    # Mode: "cert-manager" (default) | "helm-generated" | "manual"
+    #   cert-manager:   cert-manager Certificate CR with CA injection (recommended)
+    #   helm-generated: self-signed CA + cert via Helm genSignedCert (no cert-manager dependency)
     #   manual:         user creates TLS secret before install, provides caBundle
-    mode: helm-generated
+    #
+    # cert-manager is the default because it handles CA bundle injection into the
+    # MutatingWebhookConfiguration automatically. The webhook is planned for deprecation
+    # when K8s 1.36 ships DRAExtendedResource as beta — at that point this TLS
+    # requirement goes away entirely (webhook.mode=auto will skip deployment on 1.36+).
+    mode: cert-manager
     certManager:
       issuerRef:
-        name: ""
+        name: ""     # required: name of a cert-manager Issuer or ClusterIssuer
         kind: Issuer
         group: cert-manager.io
     caBundle: ""  # base64-encoded CA cert for manual mode

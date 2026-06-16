@@ -1,0 +1,112 @@
+# B200 cluster — 8-rail PF mode with per-node gateway overrides
+# sameRailRouteMode: gateway (no scope-link, all routes via gateway)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: composite-dra-device-params
+  namespace: composite-dra-system
+data:
+  params.yaml: |
+    nic:
+      params: |
+        {
+          "interface": {"name": "net{{.PairOrdinal}}", "mtu": {{device "dra.net/mtu"}}},
+          "routes": [
+            {"destination": "{{.Subnet}}", "gateway": "{{.Gateway}}", "table": {{.Table}}}
+            {{- range .CrossRails}},
+            {"destination": "{{.}}", "gateway": "{{$.Gateway}}"}
+            {{- end}},
+            {"destination": "0.0.0.0/0", "gateway": "{{.Gateway}}", "table": {{.Table}}}
+          ],
+          "rules": [
+            {"source": "{{.Subnet}}", "table": {{.Table}}, "priority": 32765}
+          ]
+        }
+      entries:
+        - match:
+            "dra.net/ipv4": {prefix: "172.16."}
+          values:
+            Subnet: "172.16.0.0/16"
+            Table: 100
+            CrossRails: ["172.17.0.0/16","172.18.0.0/16","172.19.0.0/16","172.20.0.0/16","172.21.0.0/16","172.22.0.0/16","172.23.0.0/16"]
+        - match:
+            "dra.net/ipv4": {prefix: "172.17."}
+          values:
+            Subnet: "172.17.0.0/16"
+            Table: 101
+            CrossRails: ["172.16.0.0/16","172.18.0.0/16","172.19.0.0/16","172.20.0.0/16","172.21.0.0/16","172.22.0.0/16","172.23.0.0/16"]
+        - match:
+            "dra.net/ipv4": {prefix: "172.18."}
+          values:
+            Subnet: "172.18.0.0/16"
+            Table: 102
+            CrossRails: ["172.16.0.0/16","172.17.0.0/16","172.19.0.0/16","172.20.0.0/16","172.21.0.0/16","172.22.0.0/16","172.23.0.0/16"]
+        - match:
+            "dra.net/ipv4": {prefix: "172.19."}
+          values:
+            Subnet: "172.19.0.0/16"
+            Table: 103
+            CrossRails: ["172.16.0.0/16","172.17.0.0/16","172.18.0.0/16","172.20.0.0/16","172.21.0.0/16","172.22.0.0/16","172.23.0.0/16"]
+        - match:
+            "dra.net/ipv4": {prefix: "172.20."}
+          values:
+            Subnet: "172.20.0.0/16"
+            Table: 104
+            CrossRails: ["172.16.0.0/16","172.17.0.0/16","172.18.0.0/16","172.19.0.0/16","172.21.0.0/16","172.22.0.0/16","172.23.0.0/16"]
+        - match:
+            "dra.net/ipv4": {prefix: "172.21."}
+          values:
+            Subnet: "172.21.0.0/16"
+            Table: 105
+            CrossRails: ["172.16.0.0/16","172.17.0.0/16","172.18.0.0/16","172.19.0.0/16","172.20.0.0/16","172.22.0.0/16","172.23.0.0/16"]
+        - match:
+            "dra.net/ipv4": {prefix: "172.22."}
+          values:
+            Subnet: "172.22.0.0/16"
+            Table: 106
+            CrossRails: ["172.16.0.0/16","172.17.0.0/16","172.18.0.0/16","172.19.0.0/16","172.20.0.0/16","172.21.0.0/16","172.23.0.0/16"]
+        - match:
+            "dra.net/ipv4": {prefix: "172.23."}
+          values:
+            Subnet: "172.23.0.0/16"
+            Table: 107
+            CrossRails: ["172.16.0.0/16","172.17.0.0/16","172.18.0.0/16","172.19.0.0/16","172.20.0.0/16","172.21.0.0/16","172.22.0.0/16"]
+      overrides:
+        - nodeSelector:
+            kubernetes.io/hostname: "dell-b200-1.bmas-001.lab.rdu2.dc.redhat.com"
+          entries:
+            - match: {"dra.net/ipv4": {prefix: "172.16."}}
+              values: {Gateway: "172.16.1.254"}
+            - match: {"dra.net/ipv4": {prefix: "172.17."}}
+              values: {Gateway: "172.17.1.254"}
+            - match: {"dra.net/ipv4": {prefix: "172.18."}}
+              values: {Gateway: "172.18.1.254"}
+            - match: {"dra.net/ipv4": {prefix: "172.19."}}
+              values: {Gateway: "172.19.1.254"}
+            - match: {"dra.net/ipv4": {prefix: "172.20."}}
+              values: {Gateway: "172.20.1.254"}
+            - match: {"dra.net/ipv4": {prefix: "172.21."}}
+              values: {Gateway: "172.21.1.254"}
+            - match: {"dra.net/ipv4": {prefix: "172.22."}}
+              values: {Gateway: "172.22.1.254"}
+            - match: {"dra.net/ipv4": {prefix: "172.23."}}
+              values: {Gateway: "172.23.1.254"}
+        - nodeSelector:
+            kubernetes.io/hostname: "dell-b200-2.bmas-001.lab.rdu2.dc.redhat.com"
+          entries:
+            - match: {"dra.net/ipv4": {prefix: "172.16."}}
+              values: {Gateway: "172.16.2.254"}
+            - match: {"dra.net/ipv4": {prefix: "172.17."}}
+              values: {Gateway: "172.17.2.254"}
+            - match: {"dra.net/ipv4": {prefix: "172.18."}}
+              values: {Gateway: "172.18.2.254"}
+            - match: {"dra.net/ipv4": {prefix: "172.19."}}
+              values: {Gateway: "172.19.2.254"}
+            - match: {"dra.net/ipv4": {prefix: "172.20."}}
+              values: {Gateway: "172.20.2.254"}
+            - match: {"dra.net/ipv4": {prefix: "172.21."}}
+              values: {Gateway: "172.21.2.254"}
+            - match: {"dra.net/ipv4": {prefix: "172.22."}}
+              values: {Gateway: "172.22.2.254"}
+            - match: {"dra.net/ipv4": {prefix: "172.23."}}
+              values: {Gateway: "172.23.2.254"}
