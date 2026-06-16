@@ -3,15 +3,23 @@ name: Build PR Images
 on:
   issue_comment:
     types: [created]
+  pull_request:
+    types: [opened, synchronize, reopened]
 
 jobs:
   start:
     if: |
-      github.event.issue.pull_request &&
-      contains(github.event.comment.body, '/build-approved') &&
-      (github.event.comment.author_association == 'MEMBER' ||
-       github.event.comment.author_association == 'OWNER' ||
-       github.event.comment.author_association == 'COLLABORATOR')
+      (github.event_name == 'pull_request' &&
+       !github.event.pull_request.head.repo.fork &&
+       (github.event.pull_request.author_association == 'MEMBER' ||
+        github.event.pull_request.author_association == 'OWNER' ||
+        github.event.pull_request.author_association == 'COLLABORATOR')) ||
+      (github.event_name == 'issue_comment' &&
+       github.event.issue.pull_request &&
+       contains(github.event.comment.body, '/build-approved') &&
+       (github.event.comment.author_association == 'MEMBER' ||
+        github.event.comment.author_association == 'OWNER' ||
+        github.event.comment.author_association == 'COLLABORATOR'))
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
@@ -24,15 +32,21 @@ jobs:
       - name: Get PR ref
         id: pr
         run: |
-          echo "number=$PR_NUMBER" >> $GITHUB_OUTPUT
-          PR_DATA=$(gh api repos/${{ github.repository }}/pulls/$PR_NUMBER)
-          HEAD_REPO_FORK=$(echo $PR_DATA | jq -r .head.repo.fork)
-          if [ "$HEAD_REPO_FORK" = "true" ]; then
-            echo "::error::Refusing to build fork PR"
-            exit 1
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "number=${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
+            echo "ref=${{ github.event.pull_request.head.ref }}" >> $GITHUB_OUTPUT
+            echo "sha=${{ github.event.pull_request.head.sha }}" >> $GITHUB_OUTPUT
+          else
+            echo "number=$PR_NUMBER" >> $GITHUB_OUTPUT
+            PR_DATA=$(gh api repos/${{ github.repository }}/pulls/$PR_NUMBER)
+            HEAD_REPO_FORK=$(echo $PR_DATA | jq -r .head.repo.fork)
+            if [ "$HEAD_REPO_FORK" = "true" ]; then
+              echo "::error::Refusing to build fork PR"
+              exit 1
+            fi
+            echo "ref=$(echo $PR_DATA | jq -r .head.ref)" >> $GITHUB_OUTPUT
+            echo "sha=$(echo $PR_DATA | jq -r .head.sha)" >> $GITHUB_OUTPUT
           fi
-          echo "ref=$(echo $PR_DATA | jq -r .head.ref)" >> $GITHUB_OUTPUT
-          echo "sha=$(echo $PR_DATA | jq -r .head.sha)" >> $GITHUB_OUTPUT
         env:
           PR_NUMBER: ${{ github.event.issue.number }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
