@@ -45,12 +45,14 @@ func main() {
 	klog.InitFlags(nil)
 
 	var (
-		port           int
-		tlsCert        string
-		tlsKey         string
-		kubeconfig     string
-		deviceClass    string
-		resourceName   string
+		port               int
+		tlsCert            string
+		tlsKey             string
+		kubeconfig         string
+		deviceClass        string
+		resourceName       string
+		reconcileInterval  time.Duration
+		reconcileGrace     time.Duration
 	)
 
 	resourceMappings := make(stringMapFlag)
@@ -62,6 +64,8 @@ func main() {
 	flag.StringVar(&deviceClass, "device-class", "", "composite DeviceClass name (deprecated: use --resource-mapping)")
 	flag.StringVar(&resourceName, "resource-name", "", "synthetic resource name to intercept (deprecated: use --resource-mapping)")
 	flag.Var(&resourceMappings, "resource-mapping", "resourceName=deviceClassName mapping (repeatable)")
+	flag.DurationVar(&reconcileInterval, "reconcile-interval", 5*time.Minute, "template reconciler interval")
+	flag.DurationVar(&reconcileGrace, "reconcile-grace-period", 2*time.Minute, "minimum template age before deletion")
 	flag.Parse()
 
 	// Backward compatibility: if old flags set and no --resource-mapping, build mapping from them
@@ -118,6 +122,8 @@ func main() {
 
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer cancel()
+
+	go webhook.StartTemplateReconciler(ctx, kubeClient.ResourceV1(), kubeClient.CoreV1(), reconcileInterval, reconcileGrace)
 
 	go func() {
 		klog.Infof("webhook starting on :%d (mappings=%v)", port, resourceMappings)

@@ -101,7 +101,7 @@ func (m *Mutator) Mutate(ctx context.Context, pod *corev1.Pod, namespace string)
 				Name:      templateName,
 				Namespace: namespace,
 				Labels: map[string]string{
-					"app.kubernetes.io/managed-by": "composite-dra-webhook",
+					ManagedByLabel: ManagedByValue,
 				},
 			},
 			Spec: resourceapi.ResourceClaimTemplateSpec{
