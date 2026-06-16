@@ -94,7 +94,7 @@ jobs:
 
       - name: "TLS helm-generated: produces Secret with TLS data"
         run: |
-          output=$(helm template test charts/composite-dra-driver --kube-version v1.35.0)
+          output=$(helm template test charts/composite-dra-driver --kube-version v1.35.0 --set webhook.tls.mode=helm-generated)
           echo "$output" | grep -q "type: kubernetes.io/tls" \
             || { echo "FAIL: TLS Secret not found"; exit 1; }
           echo "$output" | grep -q "tls.crt:" \
