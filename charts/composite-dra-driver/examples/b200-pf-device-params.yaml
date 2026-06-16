@@ -10,7 +10,7 @@ data:
     nic:
       params: |
         {
-          "interface": {"name": "net{{.PairOrdinal}}", "mtu": {{device "dra.net/mtu"}}},
+          "interface": {"name": "net{{.PairOrdinal}}", "mtu": {{device "dra.net/mtu"}}, "addresses": ["{{device "dra.net/ipv4"}}"]},
           "routes": [
             {"destination": "{{.Subnet}}", "gateway": "{{.Gateway}}", "table": {{.Table}}}
             {{- range .CrossRails}},
