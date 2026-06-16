@@ -5,7 +5,7 @@ on:
     types: [created]
 
 jobs:
-  build:
+  start:
     if: |
       github.event.issue.pull_request &&
       contains(github.event.comment.body, '/build-approved') &&
@@ -14,14 +14,12 @@ jobs:
        github.event.comment.author_association == 'COLLABORATOR')
     runs-on: ubuntu-latest
     permissions:
-      contents: read
-      packages: write
       pull-requests: write
-
-    strategy:
-      matrix:
-        component: [driver, webhook]
-
+    outputs:
+      number: ${{ steps.pr.outputs.number }}
+      ref: ${{ steps.pr.outputs.ref }}
+      sha: ${{ steps.pr.outputs.sha }}
+      comment-id: ${{ steps.comment.outputs.comment-id }}
     steps:
       - name: Get PR ref
         id: pr
@@ -39,9 +37,36 @@ jobs:
           PR_NUMBER: ${{ github.event.issue.number }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Comment build started
+        id: comment
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          issue-number: ${{ steps.pr.outputs.number }}
+          body: |
+            :hourglass_flowing_sand: **Building images** for `${{ steps.pr.outputs.sha }}`...
+
+            | Component | Status |
+            |-----------|--------|
+            | driver    | :yellow_circle: building |
+            | webhook   | :yellow_circle: building |
+
+  build:
+    needs: start
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      pull-requests: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        component: [driver, webhook]
+
+    steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ steps.pr.outputs.ref }}
+          ref: ${{ needs.start.outputs.ref }}
 
       - uses: docker/login-action@v3
         with:
@@ -55,26 +80,42 @@ jobs:
           push: true
           target: ${{ matrix.component }}
           tags: |
-            ghcr.io/${{ github.repository_owner }}/composite-dra-${{ matrix.component }}:pr-${{ steps.pr.outputs.number }}
-            ghcr.io/${{ github.repository_owner }}/composite-dra-${{ matrix.component }}:${{ steps.pr.outputs.sha }}
+            ghcr.io/${{ github.repository_owner }}/composite-dra-${{ matrix.component }}:pr-${{ needs.start.outputs.number }}
+            ghcr.io/${{ github.repository_owner }}/composite-dra-${{ matrix.component }}:${{ needs.start.outputs.sha }}
 
-      - name: Generate app token
-        if: matrix.component == 'driver'
-        id: app-token
-        uses: actions/create-github-app-token@v1
-        with:
-          app-id: ${{ secrets.APP_ID }}
-          private-key: ${{ secrets.APP_PRIVATE_KEY }}
-
-      - name: Comment image tag
-        if: matrix.component == 'driver'
+  report:
+    needs: [start, build]
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Comment success
+        if: needs.build.result == 'success'
         uses: peter-evans/create-or-update-comment@v4
         with:
-          token: ${{ steps.app-token.outputs.token }}
-          issue-number: ${{ steps.pr.outputs.number }}
+          comment-id: ${{ needs.start.outputs.comment-id }}
+          edit-mode: replace
           body: |
-            Images built and pushed:
+            :white_check_mark: **Images built and pushed** for `${{ needs.start.outputs.sha }}`
+
+            | Component | Status |
+            |-----------|--------|
+            | driver    | :green_circle: pushed |
+            | webhook   | :green_circle: pushed |
+
             ```
-            ghcr.io/${{ github.repository_owner }}/composite-dra-driver:pr-${{ steps.pr.outputs.number }}
-            ghcr.io/${{ github.repository_owner }}/composite-dra-webhook:pr-${{ steps.pr.outputs.number }}
+            ghcr.io/${{ github.repository_owner }}/composite-dra-driver:pr-${{ needs.start.outputs.number }}
+            ghcr.io/${{ github.repository_owner }}/composite-dra-webhook:pr-${{ needs.start.outputs.number }}
             ```
+
+      - name: Comment failure
+        if: needs.build.result == 'failure'
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          comment-id: ${{ needs.start.outputs.comment-id }}
+          edit-mode: replace
+          body: |
+            :x: **Image build failed** for `${{ needs.start.outputs.sha }}`
+
+            [View build logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
