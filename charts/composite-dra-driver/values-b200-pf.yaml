@@ -1,0 +1,28 @@
+openshift:
+  scc:
+    enabled: true
+
+deviceParamsConfigMap: composite-dra-device-params
+
+compositions:
+  - name: "gpu-nic-pair"
+    members:
+      - source: gpu
+        count: 1
+      - source: nic
+        count: 1
+    constraints:
+      - type: matchAttribute
+        attribute: "resource.kubernetes.io/pcieRoot"
+    filters:
+      nic:
+        cel: 'device.attributes["dra.net"].rdma == true && !has(device.attributes["dra.net"].isSriovVf)'
+    pairingMode: "auto"
+    transportMode: "ethernet"
+  - name: "gpu"
+    members:
+      - source: gpu
+        count: 1
+
+deviceParams:
+  configMapPath: "/etc/composite-dra/device-params/params.yaml"

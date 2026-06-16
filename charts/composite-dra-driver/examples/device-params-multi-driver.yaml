@@ -1,0 +1,38 @@
+# Example: Multi-driver params (GPU + NIC in one ConfigMap)
+# Use case: Providing opaque params to multiple underlying DRA drivers.
+# Each top-level key matches a source name from compositions config.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: composite-dra-device-params
+  namespace: composite-dra-system
+data:
+  params.yaml: |
+    nic:
+      params: |
+        {
+          "interface": {"name": "net{{.PairOrdinal}}", "mtu": {{device "dra.net/mtu"}}},
+          "routes": [
+            {"destination": "{{network (device "dra.net/ipv4")}}", "scope": 253, "table": {{.Table}}},
+            {"destination": "0.0.0.0/0", "gateway": "{{.Gateway}}", "table": {{.Table}}}
+          ],
+          "rules": [
+            {"source": "{{network (device "dra.net/ipv4")}}", "table": {{.Table}}, "priority": 32765}
+          ]
+        }
+      entries:
+        - match:
+            "dra.net/ipv4": {prefix: "192.0.2."}
+          values:
+            Gateway: "192.0.2.1"
+            Table: 100
+
+    gpu:
+      params: |
+        {
+          "computeMode": "{{.ComputeMode}}",
+          "model": "{{device "gpu.nvidia.com/model"}}"
+        }
+      entries:
+        - values:
+            ComputeMode: "exclusive"

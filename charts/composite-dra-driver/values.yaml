@@ -151,11 +151,12 @@ compositions:
       - source: gpu
         count: 1
 
-railConfig:
-  interfacePrefix: "net"
-  startingTableID: 100
-  crossRailCIDR: ""
-  rails: []
+# External device params ConfigMap name. When set, mounted into driver pods.
+# The ConfigMap provides opaque driver params for shadow claims — see examples/ for format.
+# deviceParamsConfigMap: ""
+
+# deviceParams:
+#   configMapPath: "/etc/composite-dra/device-params/params.yaml"
 
 openshift:
   scc:

@@ -16,7 +16,7 @@ data:
     compositions:
       {{- toYaml .Values.compositions | nindent 6 }}
 
-    {{- if .Values.railConfig }}
-    railConfig:
-      {{- toYaml .Values.railConfig | nindent 6 }}
+    {{- if .Values.deviceParams }}
+    deviceParams:
+      {{- toYaml .Values.deviceParams | nindent 6 }}
     {{- end }}
