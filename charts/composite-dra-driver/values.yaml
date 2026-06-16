@@ -1,7 +1,7 @@
 namespace: composite-dra-system
 
 driver:
-  name: "composite.dra.example.io"
+  name: "composite.dra.io"
   image:
     repository: ghcr.io/openshift-psap/composite-dra-driver
     tag: latest
@@ -86,7 +86,7 @@ imagePullSecrets: []
 # Override per composition with deviceClassName/extendedResourceName fields.
 # deviceClass:
 #   name: composite-gpu-nic
-#   selector: 'device.driver == "composite.dra.example.io"'
+#   selector: 'device.driver == "composite.dra.io"'
 #   extendedResourceName: ""
 
 sources:
