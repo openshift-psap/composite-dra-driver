@@ -23,7 +23,7 @@ pkg/plugin/grpc_client.go   ← gRPC client to underlying driver sockets
 pkg/plugin/reconciler.go    ← Orphan shadow claim cleanup
 pkg/synthesizer/            ← Watch → Pair → Publish pipeline
 pkg/shadow/claims.go        ← Shadow ResourceClaim CRUD
-pkg/shadow/railconfig.go    ← Per-rail NIC config (dranet-specific, see issue #9)
+pkg/shadow/params.go        ← External device params resolver (generic, driver-agnostic)
 pkg/store/                  ← DeviceStore (in-memory) + StateStore (BoltDB)
 pkg/config/                 ← Config types + validation
 pkg/webhook/                ← Mutating webhook (resource request → claim template)
@@ -46,8 +46,8 @@ charts/composite-dra-driver/ ← Helm chart (driver + optional webhook)
 
 ## What's Coupled (Known Technical Debt)
 
-- `pkg/shadow/railconfig.go` — NICParams/Route/Rule structs mirror dranet's internal JSON format. Tracked in issue #9 for decoupling via templates.
-- Rail config is top-level in config, should be per-source. Same issue.
+- External device params ConfigMap format is opaque JSON templates — no schema validation at load time. Errors surface at Prepare time when template execution fails.
+- VF mode requires external IPAM to populate the ConfigMap (issue #34).
 
 ## Testing Conventions
 
@@ -114,12 +114,12 @@ oc logs -l app.kubernetes.io/component=driver \
 | #5 Prepare performance | gRPC phase ~3s (nvidia CDI gen) | Phase 1 done, Phase 2 pending |
 | #7 Combined shadow claims | Could halve API calls | Design pending |
 | #8 CI improvements | No golangci-lint yet | Partial |
-| #9 Decouple dranet config | railconfig.go is dranet-specific | Design pending |
+| #9 Decouple dranet config | railconfig.go was dranet-specific | **Resolved** (PR #32 — external device params) |
 | #13 Auto-detect webhook | Manual enable/disable | Design pending |
 
 ## Reference Repos
 
 - [kubernetes/kubernetes](https://github.com/kubernetes/kubernetes) — K8s source (kubeletplugin at `staging/src/k8s.io/dynamic-resource-allocation/`, DRA APIs at `staging/src/k8s.io/api/resource/v1/`)
 - [kubernetes-sigs/dranet](https://github.com/kubernetes-sigs/dranet) — dranet DRA driver (NRI hooks, PodConfigStore)
-- [openshift-psap/dra-rail-admission-webhook](https://github.com/openshift-psap/dra-rail-admission-webhook) — old webhook (reference for rail config)
+- [openshift-psap/dra-rail-admission-webhook](https://github.com/openshift-psap/dra-rail-admission-webhook) — old webhook (reference for VF/IPAM implementation)
 - [kubernetes-sigs/dra-driver-nvidia-gpu](https://github.com/kubernetes-sigs/dra-driver-nvidia-gpu) — nvidia DRA driver (CDI, checkpoint)
