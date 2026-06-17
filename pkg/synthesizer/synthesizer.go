@@ -28,7 +28,7 @@ type Synthesizer struct {
 }
 
 func New(cfg *config.CompositeConfig, nodeName string, kubeClient kubernetes.Interface, deviceStore *store.DeviceStore, publisher ResourcePublisher) *Synthesizer {
-	nodeLabels := fetchNodeLabels(kubeClient, nodeName)
+	nodeLabels := FetchNodeLabels(kubeClient, nodeName)
 
 	s := &Synthesizer{
 		cfg:       cfg,
@@ -49,7 +49,7 @@ func New(cfg *config.CompositeConfig, nodeName string, kubeClient kubernetes.Int
 	return s
 }
 
-func fetchNodeLabels(kubeClient kubernetes.Interface, nodeName string) map[string]string {
+func FetchNodeLabels(kubeClient kubernetes.Interface, nodeName string) map[string]string {
 	node, err := kubeClient.CoreV1().Nodes().Get(context.Background(), nodeName, metav1.GetOptions{})
 	if err != nil {
 		klog.Warningf("synthesizer: could not fetch node labels for %s: %v", nodeName, err)

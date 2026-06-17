@@ -1,0 +1,72 @@
+# Example: Per-node gateway overrides
+# Use case: Clusters where each node has different gateway IPs per rail.
+# Common config in entries, per-node gateways in overrides.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: composite-dra-device-params
+  namespace: composite-dra-system
+data:
+  params.yaml: |
+    nic:
+      params: |
+        {
+          "interface": {"name": "net{{.PairOrdinal}}", "mtu": {{device "dra.net/mtu"}}, "addresses": ["{{device "dra.net/ipv4"}}"]},
+          "routes": [
+            {"destination": "{{network (device "dra.net/ipv4")}}", "scope": 253, "table": {{.Table}}}
+            {{- range .CrossRails}},
+            {"destination": "{{.}}", "gateway": "{{$.Gateway}}"}
+            {{- end}},
+            {"destination": "0.0.0.0/0", "gateway": "{{.Gateway}}", "table": {{.Table}}}
+          ],
+          "rules": [
+            {"source": "{{network (device "dra.net/ipv4")}}", "table": {{.Table}}, "priority": 32765}
+          ]
+        }
+      entries:
+        - match:
+            "dra.net/ipv4": {prefix: "192.0.2."}
+          values:
+            Table: 100
+            CrossRails:
+              - "198.51.100.0/24"
+              - "203.0.113.0/24"
+        - match:
+            "dra.net/ipv4": {prefix: "198.51.100."}
+          values:
+            Table: 101
+            CrossRails:
+              - "192.0.2.0/24"
+              - "203.0.113.0/24"
+        - match:
+            "dra.net/ipv4": {prefix: "203.0.113."}
+          values:
+            Table: 102
+            CrossRails:
+              - "192.0.2.0/24"
+              - "198.51.100.0/24"
+      overrides:
+        - nodeSelector:
+            kubernetes.io/hostname: "node-1.example.com"
+          entries:
+            - match:
+                "dra.net/ipv4": {prefix: "192.0.2."}
+              values: {Gateway: "192.0.2.1"}
+            - match:
+                "dra.net/ipv4": {prefix: "198.51.100."}
+              values: {Gateway: "198.51.100.1"}
+            - match:
+                "dra.net/ipv4": {prefix: "203.0.113."}
+              values: {Gateway: "203.0.113.1"}
+        - nodeSelector:
+            kubernetes.io/hostname: "node-2.example.com"
+          entries:
+            - match:
+                "dra.net/ipv4": {prefix: "192.0.2."}
+              values: {Gateway: "192.0.2.2"}
+            - match:
+                "dra.net/ipv4": {prefix: "198.51.100."}
+              values: {Gateway: "198.51.100.2"}
+            - match:
+                "dra.net/ipv4": {prefix: "203.0.113."}
+              values: {Gateway: "203.0.113.2"}

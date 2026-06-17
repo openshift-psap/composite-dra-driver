@@ -48,7 +48,7 @@ jobs:
 
       - name: "Auto mode: extendedResourceName set on K8s >=1.36"
         run: |
-          helm template test charts/composite-dra-driver --kube-version v1.36.0 | grep -q 'extendedResourceName: "composite.dra.example.io/gpu-nic-pair"' \
+          helm template test charts/composite-dra-driver --kube-version v1.36.0 | grep -q 'extendedResourceName: "composite.dra.io/gpu-nic-pair"' \
             || { echo "FAIL: extendedResourceName not set on 1.36"; exit 1; }
 
       - name: "Auto mode: no extendedResourceName on K8s <1.36"
@@ -71,7 +71,7 @@ jobs:
           output=$(helm template test charts/composite-dra-driver --kube-version v1.35.0)
           echo "$output" | grep -q "matchConditions" \
             || { echo "FAIL: matchConditions not found in webhook config"; exit 1; }
-          echo "$output" | grep -q 'composite.dra.example.io/gpu-nic-pair' \
+          echo "$output" | grep -q 'composite.dra.io/gpu-nic-pair' \
             || { echo "FAIL: resourceName not found in matchConditions CEL expression"; exit 1; }
           echo "$output" | grep -q 'has(c.resources) && has(c.resources.requests)' \
             || { echo "FAIL: CEL expression missing null-safety checks"; exit 1; }
@@ -81,7 +81,7 @@ jobs:
       - name: "matchConditions: CEL uses composition-derived resourceName"
         run: |
           output=$(helm template test charts/composite-dra-driver --kube-version v1.35.0 --set 'compositions[0].name=custom-comp')
-          echo "$output" | grep -q 'composite.dra.example.io/custom-comp' \
+          echo "$output" | grep -q 'composite.dra.io/custom-comp' \
             || { echo "FAIL: composition-derived resourceName not reflected in matchConditions CEL"; exit 1; }
 
       - name: "Namespace exclusion: system namespaces excluded"
@@ -94,7 +94,7 @@ jobs:
 
       - name: "TLS helm-generated: produces Secret with TLS data"
         run: |
-          output=$(helm template test charts/composite-dra-driver --kube-version v1.35.0)
+          output=$(helm template test charts/composite-dra-driver --kube-version v1.35.0 --set webhook.tls.mode=helm-generated)
           echo "$output" | grep -q "type: kubernetes.io/tls" \
             || { echo "FAIL: TLS Secret not found"; exit 1; }
           echo "$output" | grep -q "tls.crt:" \

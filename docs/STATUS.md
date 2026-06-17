@@ -16,7 +16,7 @@ Scheduler allocates composite device
   → Kubelet calls composite driver Prepare
     → Create shadow claim for gpu.nvidia.com (pre-filled allocation)
     → gRPC to nvidia socket → nvidia generates CDI specs, returns CDI IDs
-    → Create shadow claim for dra.net (pre-filled allocation + rail config)
+    → Create shadow claim for dra.net (pre-filled allocation + opaque params from external ConfigMap)
     → gRPC to dranet socket → dranet stores NIC config in PodConfigStore
     → Return combined CDI IDs to kubelet
       → Container runtime applies CDI specs (GPU visible)
@@ -143,7 +143,7 @@ composite-dra-driver/
 | `pkg/plugin/unprepare.go` | Shadow claim cleanup + underlying driver Unprepare |
 | `pkg/plugin/grpc_client.go` | gRPC client connecting to `/var/lib/kubelet/plugins/<driver>/dra.sock` |
 | `pkg/shadow/claims.go` | Shadow ResourceClaim CRUD (create with pre-filled allocation + OwnerRef) |
-| `pkg/shadow/railconfig.go` | Per-rail NIC config generation (match NIC attrs → rail → opaque params) |
+| `pkg/shadow/params.go` | External device params resolver (match device attrs → template → opaque params) |
 | `pkg/store/state.go` | BoltDB persistence for crash recovery |
 | Wire `kubeletplugin.Start()` | Register composite driver with kubelet, connect synthesizer + plugin |
 

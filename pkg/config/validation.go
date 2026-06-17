@@ -5,7 +5,6 @@ package config
 
 import (
 	"fmt"
-	"strings"
 )
 
 func Validate(cfg *CompositeConfig) error {
@@ -150,35 +149,11 @@ func Validate(cfg *CompositeConfig) error {
 		}
 	}
 
-	if cfg.RailConfig != nil {
-		if err := validateRailConfig(cfg.RailConfig); err != nil {
-			return fmt.Errorf("railConfig: %w", err)
+	if cfg.DeviceParams != nil {
+		if cfg.DeviceParams.ConfigMapPath == "" {
+			return fmt.Errorf("deviceParams.configMapPath is required when deviceParams is set")
 		}
 	}
 
-	return nil
-}
-
-func validateRailConfig(rc *RailConfig) error {
-	if rc.InterfacePrefix == "" {
-		return fmt.Errorf("interfacePrefix is required")
-	}
-	for i, rail := range rc.Rails {
-		if rail.Selector.CEL == "" {
-			return fmt.Errorf("rails[%d].selector.cel is required", i)
-		}
-		if rail.Config.Subnet == "" {
-			return fmt.Errorf("rails[%d].config.subnet is required", i)
-		}
-		if rail.Config.Gateway == "" {
-			return fmt.Errorf("rails[%d].config.gateway is required", i)
-		}
-		if rail.Config.MTU <= 0 {
-			return fmt.Errorf("rails[%d].config.mtu must be > 0", i)
-		}
-		if !strings.Contains(rail.Config.Subnet, "/") {
-			return fmt.Errorf("rails[%d].config.subnet must be in CIDR notation", i)
-		}
-	}
 	return nil
 }

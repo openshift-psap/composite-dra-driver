@@ -140,21 +140,21 @@ oc logs -l app.kubernetes.io/component=driver -n composite-dra-system --tail=20
 
 ### Cluster-specific values file
 
-Override `railConfig` and `openshift.scc.enabled` per cluster. See `values-poseidon.yaml` for example.
+Override `deviceParams`, `deviceParamsConfigMap`, and `openshift.scc.enabled` per cluster. See `values-poseidon.yaml` and `values-b200-pf.yaml` for examples.
 
 Key settings:
 
 | Value | Description |
 |-------|-------------|
-| `driver.name` | Driver name in ResourceSlices (default: `composite.dra.example.io`) |
+| `driver.name` | Driver name in ResourceSlices (default: `composite.dra.io`) |
 | `sources` | List of underlying DRA drivers to compose |
 | `compositions` | Pairing rules (matchAttribute constraints) |
 | `compositions[].filters` | CEL filters per source (e.g., `rdma == true`) |
-| `railConfig.rails` | Per-rail NIC routing config |
-| `railConfig.crossRailCIDR` | Supernet for cross-rail routes (e.g., `10.0.0.0/13`) |
-| `webhook.enabled` | Deploy webhook (default: false) |
+| `deviceParamsConfigMap` | External ConfigMap name with opaque driver params |
+| `deviceParams.configMapPath` | Mount path for the device params file |
+| `webhook.mode` | `auto` / `enabled` / `disabled` |
+| `webhook.tls.mode` | `cert-manager` (default) / `helm-generated` / `manual` |
 | `openshift.scc.enabled` | Create SCC for hostPath (OCP only) |
-| `deviceClass.extendedResourceName` | Enable extended resource UX (K8s 1.35+) |
 
 ## Known Limitations
 

@@ -45,7 +45,7 @@ This is a Kubernetes **Dynamic Resource Allocation (DRA)** driver that composes 
 |---------|------|
 | `pkg/plugin` | DRA plugin (Prepare/Unprepare), gRPC client to underlying drivers, orphan reconciler |
 | `pkg/synthesizer` | Watcher → Pairer → Publisher pipeline, CEL filter evaluation |
-| `pkg/shadow` | Shadow claim CRUD (`ClaimManager`), rail config resolution for NIC opaque params |
+| `pkg/shadow` | Shadow claim CRUD (`ClaimManager`), external device params resolver |
 | `pkg/store` | `DeviceStore` (in-memory device mappings), `StateStore` (BoltDB persistence) |
 | `pkg/config` | Config types, YAML loading, validation |
 | `pkg/webhook` | HTTP handler, pod mutator, claim builder |
@@ -67,7 +67,7 @@ Config YAML (`/etc/composite-dra/config.yaml` in-cluster) defines:
 - `compositions[]` — pairing rules: which sources, member counts, matchAttribute constraints, CEL filters
 - `compositions[].pairingMode` — `auto` (default, attribute-based) or `explicit` (CEL selectors per MachineConfigPool)
 - `compositions[].nodePoolLabelKey` + `nodePools[]` — explicit mode: group CEL-based device pairs by node pool label value
-- `railConfig` — per-rail NIC config (subnet, gateway, MTU, routing table) embedded in shadow claims as opaque params
+- `deviceParams` — references an external ConfigMap providing opaque driver params for shadow claims (replaces the old NIC-specific `railConfig`)
 
 ## Pairing Modes
 
@@ -86,4 +86,4 @@ Config YAML (`/etc/composite-dra/config.yaml` in-cluster) defines:
 
 ## Testing
 
-Table-driven unit tests. Helpers in pairer_test.go (`strAttr`, `intAttr`, `boolAttr`) for building device attributes. No integration tests — those require a K8s cluster with DRA feature gate. Test files: config validation, pairer algorithm, device store thread-safety, publisher splitting, rail config, webhook claim builder.
+Table-driven unit tests. Helpers in pairer_test.go (`strAttr`, `intAttr`, `boolAttr`) for building device attributes. No integration tests — those require a K8s cluster with DRA feature gate. Test files: config validation, pairer algorithm, device store thread-safety, publisher splitting, device params resolver, webhook claim builder.

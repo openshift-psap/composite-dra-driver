@@ -1,7 +1,7 @@
 namespace: composite-dra-system
 
 driver:
-  name: "composite.dra.example.io"
+  name: "composite.dra.io"
   image:
     repository: ghcr.io/openshift-psap/composite-dra-driver
     tag: latest
@@ -66,14 +66,19 @@ webhook:
     custom: []
   failurePolicy: Fail
   tls:
-    # Mode: "helm-generated" | "cert-manager" | "manual"
-    #   helm-generated: self-signed CA + cert via Helm genSignedCert (no dependencies)
-    #   cert-manager:   cert-manager Certificate CR (requires cert-manager + Issuer)
+    # Mode: "cert-manager" (default) | "helm-generated" | "manual"
+    #   cert-manager:   cert-manager Certificate CR with CA injection (recommended)
+    #   helm-generated: self-signed CA + cert via Helm genSignedCert (no cert-manager dependency)
     #   manual:         user creates TLS secret before install, provides caBundle
-    mode: helm-generated
+    #
+    # cert-manager is the default because it handles CA bundle injection into the
+    # MutatingWebhookConfiguration automatically. The webhook is planned for deprecation
+    # when K8s 1.36 ships DRAExtendedResource as beta — at that point this TLS
+    # requirement goes away entirely (webhook.mode=auto will skip deployment on 1.36+).
+    mode: cert-manager
     certManager:
       issuerRef:
-        name: ""
+        name: ""     # required: name of a cert-manager Issuer or ClusterIssuer
         kind: Issuer
         group: cert-manager.io
     caBundle: ""  # base64-encoded CA cert for manual mode
@@ -86,7 +91,7 @@ imagePullSecrets: []
 # Override per composition with deviceClassName/extendedResourceName fields.
 # deviceClass:
 #   name: composite-gpu-nic
-#   selector: 'device.driver == "composite.dra.example.io"'
+#   selector: 'device.driver == "composite.dra.io"'
 #   extendedResourceName: ""
 
 sources:
@@ -151,11 +156,12 @@ compositions:
       - source: gpu
         count: 1
 
-railConfig:
-  interfacePrefix: "net"
-  startingTableID: 100
-  crossRailCIDR: ""
-  rails: []
+# External device params ConfigMap name. When set, mounted into driver pods.
+# The ConfigMap provides opaque driver params for shadow claims — see examples/ for format.
+# deviceParamsConfigMap: ""
+
+# deviceParams:
+#   configMapPath: "/etc/composite-dra/device-params/params.yaml"
 
 openshift:
   scc:
