@@ -128,7 +128,7 @@ Propose a Kubernetes enhancement for the scheduler to natively understand cross-
 | Capability | Issue | Rationale for deferral |
 |-----------|-------|----------------------|
 | **Consumable capacity** (CPU/memory grouped mode) | [#21](https://github.com/openshift-psap/composite-dra-driver/issues/21) | Requires new abstraction — capacity reservation vs. discrete device selection. Investigation in progress. Does not block GPU+NIC use case. |
-| **Cross-composition device exclusion** | [#28](https://github.com/openshift-psap/composite-dra-driver/issues/28) | Same GPU appearing in multiple composition pools. Workaround: use one composition type per cluster. Fix: pairer-side device partitioning. |
+| **Cross-composition device exclusion** | [#28](https://github.com/openshift-psap/composite-dra-driver/issues/28) | Same GPU can appear in multiple composition pools. Two proposed approaches: (a) pairer-side partitioning — statically assign each device to one pool, or (b) continuous synthesizer recomputation — re-watch underlying ResourceSlices and remove composite devices whose members are allocated. [Upstream discussion](https://github.com/kubernetes-sigs/wg-device-management/issues/54). |
 | **VF support + external IPAM** | [#34](https://github.com/openshift-psap/composite-dra-driver/issues/34) | VFs lack IP attributes at pairing time. Requires external IPAM controller integration. PF mode works today. |
 | **Blast radius isolation** | [#35](https://github.com/openshift-psap/composite-dra-driver/issues/35) | Single ConfigMap = single point of failure. Fix: per-composition validation with partial startup. |
 | **Observability** | [#18](https://github.com/openshift-psap/composite-dra-driver/issues/18) | No metrics, events, or structured logging. Standard Prometheus + K8s events work. |
@@ -180,14 +180,14 @@ The composite driver models every device as a discrete, exclusive unit. CPU/memo
 - **(a) Accept for v1.** GPU+NIC is the primary use case and works with discrete devices. Consumable capacity is a separate workstream.
 - **(b) Block v1 on capacity support.** Full NUMA-pinned composition (GPU+NIC+CPU+Memory) is the end goal and should ship together.
 
-### D3: Where should cross-composition device exclusion be solved?
+### D3: How should cross-composition device exclusion be solved?
 
-When a GPU appears in both `gpu-nic-pair` and `gpu-only` compositions, the scheduler can double-allocate the same physical GPU from different pools. DRA has no cross-pool mutual exclusion.
+When a GPU appears in both `gpu-nic-pair` and `gpu-only` compositions, the scheduler can double-allocate the same physical GPU from different pools. DRA has no cross-pool mutual exclusion. Neither approach below is implemented yet ([#28](https://github.com/openshift-psap/composite-dra-driver/issues/28)). [Upstream discussion](https://github.com/kubernetes-sigs/wg-device-management/issues/54).
 
 **Options:**
-- **(a) Pairer-side partitioning.** Assign each physical device to at most one composition's pool. Local solution, works today.
-- **(b) Propose DRA API extension.** Cross-pool exclusion would benefit any driver that publishes the same hardware in multiple pools. Longer timeline.
-- **(c) Both.** Ship pairer-side partitioning now, propose API extension for the ecosystem.
+- **(a) Pairer-side partitioning.** Statically assign each physical device to at most one composition's pool. No race window, but wastes devices — a GPU assigned to `gpu-nic-pair` pool is unavailable for `gpu-only` even if no NIC is paired with it.
+- **(b) Continuous synthesizer recomputation.** The synthesizer already re-watches underlying ResourceSlices on change. Extend it to detect when a member device is allocated and remove the corresponding composite devices from published ResourceSlices. Full device utilization, but a small race window exists between allocation and recomputation.
+- **(c) Both.** Use partitioning as the default, with continuous recomputation as a refinement to reclaim unused devices.
 
 ### D4: Should virtual ResourceSlice publishing be formalized?
 
