@@ -8,8 +8,14 @@ type CompositeConfig struct {
 	Driver           DriverConfig          `json:"driver"`
 	Sources          []SourceConfig        `json:"sources"`
 	Compositions     []CompositionConfig   `json:"compositions"`
-	RailConfig       *RailConfig           `json:"railConfig,omitempty"`
+	DeviceParams     *DeviceParamsConfig   `json:"deviceParams,omitempty"`
 	ExplicitPairings *ExplicitPairings     `json:"explicitPairings,omitempty"`
+}
+
+// DeviceParamsConfig references an externally-maintained ConfigMap
+// that provides opaque driver params for shadow claims.
+type DeviceParamsConfig struct {
+	ConfigMapPath string `json:"configMapPath"`
 }
 
 type DriverConfig struct {
@@ -84,30 +90,6 @@ type ConstraintConfig struct {
 
 type FilterConfig struct {
 	CEL string `json:"cel"`
-}
-
-// RailConfig defines per-rail NIC configuration embedded in shadow claims.
-type RailConfig struct {
-	InterfacePrefix string       `json:"interfacePrefix"`
-	StartingTableID int          `json:"startingTableID"`
-	CrossRailCIDR   string       `json:"crossRailCIDR,omitempty"`
-	Rails           []RailEntry  `json:"rails"`
-}
-
-type RailEntry struct {
-	Selector RailSelector    `json:"selector"`
-	Config   RailParameters  `json:"config"`
-}
-
-type RailSelector struct {
-	CEL string `json:"cel"`
-}
-
-type RailParameters struct {
-	Subnet  string `json:"subnet"`
-	Gateway string `json:"gateway"`
-	MTU     int    `json:"mtu"`
-	TableID int    `json:"tableID"`
 }
 
 // Deprecated: ExplicitPairings is the old top-level explicit pairing config.

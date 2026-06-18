@@ -1,0 +1,72 @@
+# Poseidon cluster — 8-rail NIC config with static gateways
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: composite-dra-device-params
+  namespace: composite-dra-system
+data:
+  params.yaml: |
+    nic:
+      params: |
+        {
+          "interface": {"name": "net{{.PairOrdinal}}", "mtu": {{device "dra.net/mtu"}}, "addresses": ["{{device "dra.net/ipv4"}}"]},
+          "routes": [
+            {"destination": "{{network (device "dra.net/ipv4")}}", "scope": 253, "table": {{.Table}}}
+            {{- range .CrossRails}},
+            {"destination": "{{.}}", "gateway": "{{$.Gateway}}"}
+            {{- end}},
+            {"destination": "0.0.0.0/0", "gateway": "{{.Gateway}}", "table": {{.Table}}}
+          ],
+          "rules": [
+            {"source": "{{network (device "dra.net/ipv4")}}", "table": {{.Table}}, "priority": 32765}
+          ]
+        }
+      entries:
+        - match:
+            "dra.net/ipv4": {prefix: "10.0."}
+          values:
+            Gateway: "10.0.0.1"
+            Table: 100
+            CrossRails: ["10.1.0.0/16","10.2.0.0/16","10.3.0.0/16","10.4.0.0/16","10.5.0.0/16","10.6.0.0/16","10.7.0.0/16"]
+        - match:
+            "dra.net/ipv4": {prefix: "10.1."}
+          values:
+            Gateway: "10.1.0.1"
+            Table: 101
+            CrossRails: ["10.0.0.0/16","10.2.0.0/16","10.3.0.0/16","10.4.0.0/16","10.5.0.0/16","10.6.0.0/16","10.7.0.0/16"]
+        - match:
+            "dra.net/ipv4": {prefix: "10.2."}
+          values:
+            Gateway: "10.2.0.1"
+            Table: 102
+            CrossRails: ["10.0.0.0/16","10.1.0.0/16","10.3.0.0/16","10.4.0.0/16","10.5.0.0/16","10.6.0.0/16","10.7.0.0/16"]
+        - match:
+            "dra.net/ipv4": {prefix: "10.3."}
+          values:
+            Gateway: "10.3.0.1"
+            Table: 103
+            CrossRails: ["10.0.0.0/16","10.1.0.0/16","10.2.0.0/16","10.4.0.0/16","10.5.0.0/16","10.6.0.0/16","10.7.0.0/16"]
+        - match:
+            "dra.net/ipv4": {prefix: "10.4."}
+          values:
+            Gateway: "10.4.0.1"
+            Table: 104
+            CrossRails: ["10.0.0.0/16","10.1.0.0/16","10.2.0.0/16","10.3.0.0/16","10.5.0.0/16","10.6.0.0/16","10.7.0.0/16"]
+        - match:
+            "dra.net/ipv4": {prefix: "10.5."}
+          values:
+            Gateway: "10.5.0.1"
+            Table: 105
+            CrossRails: ["10.0.0.0/16","10.1.0.0/16","10.2.0.0/16","10.3.0.0/16","10.4.0.0/16","10.6.0.0/16","10.7.0.0/16"]
+        - match:
+            "dra.net/ipv4": {prefix: "10.6."}
+          values:
+            Gateway: "10.6.0.1"
+            Table: 106
+            CrossRails: ["10.0.0.0/16","10.1.0.0/16","10.2.0.0/16","10.3.0.0/16","10.4.0.0/16","10.5.0.0/16","10.7.0.0/16"]
+        - match:
+            "dra.net/ipv4": {prefix: "10.7."}
+          values:
+            Gateway: "10.7.0.1"
+            Table: 107
+            CrossRails: ["10.0.0.0/16","10.1.0.0/16","10.2.0.0/16","10.3.0.0/16","10.4.0.0/16","10.5.0.0/16","10.6.0.0/16"]

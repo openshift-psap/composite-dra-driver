@@ -21,12 +21,12 @@ import (
 
 // CompositePlugin implements kubeletplugin.DRAPlugin for the composite driver.
 type CompositePlugin struct {
-	driverName   string
-	deviceStore  *store.DeviceStore
-	claimMgr     *shadow.ClaimManager
-	railResolver *shadow.RailConfigResolver
-	grpcClient   *GRPCClient
-	stateStore   *store.StateStore
+	driverName      string
+	deviceStore     *store.DeviceStore
+	claimMgr        *shadow.ClaimManager
+	paramsResolver  *shadow.DeviceParamsResolver
+	grpcClient      *GRPCClient
+	stateStore      *store.StateStore
 
 	// tracks shadow claims created per composite claim for cleanup
 	mu           sync.Mutex
@@ -44,18 +44,18 @@ func NewCompositePlugin(
 	driverName string,
 	deviceStore *store.DeviceStore,
 	claimMgr *shadow.ClaimManager,
-	railResolver *shadow.RailConfigResolver,
+	paramsResolver *shadow.DeviceParamsResolver,
 	grpcClient *GRPCClient,
 	stateStore *store.StateStore,
 ) *CompositePlugin {
 	p := &CompositePlugin{
-		driverName:   driverName,
-		deviceStore:  deviceStore,
-		claimMgr:     claimMgr,
-		railResolver: railResolver,
-		grpcClient:   grpcClient,
-		stateStore:   stateStore,
-		shadowClaims: make(map[types.UID][]shadowRecord),
+		driverName:     driverName,
+		deviceStore:    deviceStore,
+		claimMgr:       claimMgr,
+		paramsResolver: paramsResolver,
+		grpcClient:     grpcClient,
+		stateStore:     stateStore,
+		shadowClaims:   make(map[types.UID][]shadowRecord),
 	}
 
 	if stateStore != nil {
@@ -129,8 +129,8 @@ func (p *CompositePlugin) prepareClaim(
 
 		for memberIdx, member := range mapping.Members {
 			var opaqueConfig []byte
-			if p.railResolver != nil {
-				opaqueConfig, _ = p.railResolver.ResolveForDevice(member.Attributes, pairOrdinal)
+			if p.paramsResolver != nil {
+				opaqueConfig = p.paramsResolver.ResolveForDevice(member.SourceName, member.Attributes, pairOrdinal)
 			}
 			work = append(work, &memberWork{
 				pairIdx:      pairOrdinal,

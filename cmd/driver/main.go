@@ -90,7 +90,18 @@ func main() {
 	deviceStore := store.NewDeviceStore()
 
 	claimMgr := shadow.NewClaimManager(kubeClient.ResourceV1(), cfg.Driver.Name)
-	railResolver := shadow.NewRailConfigResolver(cfg.RailConfig)
+
+	var paramsResolver *shadow.DeviceParamsResolver
+	if cfg.DeviceParams != nil {
+		nodeLabels := synthesizer.FetchNodeLabels(kubeClient, nodeName)
+		var err2 error
+		paramsResolver, err2 = shadow.NewDeviceParamsResolver(
+			cfg.DeviceParams.ConfigMapPath, nodeName, nodeLabels)
+		if err2 != nil {
+			klog.Fatalf("device params resolver: %v", err2)
+		}
+	}
+
 	grpcClient := plugin.NewGRPCClient(pluginDir)
 	defer grpcClient.Close()
 
@@ -98,7 +109,7 @@ func main() {
 		cfg.Driver.Name,
 		deviceStore,
 		claimMgr,
-		railResolver,
+		paramsResolver,
 		grpcClient,
 		stateStore,
 	)

@@ -76,6 +76,11 @@ spec:
             - name: config
               mountPath: /etc/composite-dra
               readOnly: true
+            {{- if .Values.deviceParamsConfigMap }}
+            - name: device-params
+              mountPath: /etc/composite-dra/device-params
+              readOnly: true
+            {{- end }}
       volumes:
         - name: kubelet-plugins
           hostPath:
@@ -92,3 +97,8 @@ spec:
         - name: config
           configMap:
             name: composite-dra-config
+        {{- if .Values.deviceParamsConfigMap }}
+        - name: device-params
+          configMap:
+            name: {{ .Values.deviceParamsConfigMap }}
+        {{- end }}

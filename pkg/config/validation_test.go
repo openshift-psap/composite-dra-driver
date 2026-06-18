@@ -293,41 +293,21 @@ func TestValidate_ExplicitMode_EmptyPairs(t *testing.T) {
 	}
 }
 
-func TestValidate_RailConfig(t *testing.T) {
+func TestValidate_DeviceParams(t *testing.T) {
 	cfg := validConfig()
-	cfg.RailConfig = &RailConfig{
-		InterfacePrefix: "net",
-		StartingTableID: 100,
-		Rails: []RailEntry{
-			{
-				Selector: RailSelector{CEL: `device.attributes["dra.net"].ipv4.startsWith("10.0.0.")`},
-				Config: RailParameters{
-					Subnet:  "10.0.0.0/16",
-					Gateway: "10.0.0.1",
-					MTU:     9000,
-					TableID: 100,
-				},
-			},
-		},
+	cfg.DeviceParams = &DeviceParamsConfig{
+		ConfigMapPath: "/etc/composite-dra/device-params/params.yaml",
 	}
 	if err := Validate(cfg); err != nil {
-		t.Fatalf("expected valid rail config, got: %v", err)
+		t.Fatalf("expected valid device params config, got: %v", err)
 	}
 }
 
-func TestValidate_RailConfigMissingSubnet(t *testing.T) {
+func TestValidate_DeviceParamsMissingPath(t *testing.T) {
 	cfg := validConfig()
-	cfg.RailConfig = &RailConfig{
-		InterfacePrefix: "net",
-		Rails: []RailEntry{
-			{
-				Selector: RailSelector{CEL: "some expr"},
-				Config:   RailParameters{Gateway: "10.0.0.1", MTU: 9000},
-			},
-		},
-	}
+	cfg.DeviceParams = &DeviceParamsConfig{}
 	if err := Validate(cfg); err == nil {
-		t.Fatal("expected error for missing subnet")
+		t.Fatal("expected error for empty configMapPath")
 	}
 }
 

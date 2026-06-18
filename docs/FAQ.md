@@ -44,7 +44,7 @@ The old webhook scanned ResourceSlices, picked a node, picked specific devices, 
 
 ### How are rails handled?
 
-Each composite device inherits its NIC's IP, which determines the rail. The RailConfigResolver matches the NIC's IP against rail selectors in config and generates per-rail routing config (routing table, gateway, policy rules) embedded in the shadow claim's opaque parameters. dranet's NRI hook applies this config when setting up the NIC in the pod netns.
+Each composite device inherits its NIC's IP, which determines the rail. The `DeviceParamsResolver` matches device attributes against entries in an external ConfigMap and generates opaque parameters for the shadow claim via Go template substitution. The ConfigMap is maintained externally (by admin, script, or operator) — the composite driver never interprets the params content. dranet's NRI hook applies this config when setting up the NIC in the pod netns. See `charts/composite-dra-driver/examples/` for ConfigMap templates.
 
 ### Why are cross-rail routes in the main routing table?
 

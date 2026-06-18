@@ -142,19 +142,11 @@ compositions:
       nic:
         cel: 'device.attributes["dra.net"].rdma == true'
 
-railConfig:
-  crossRailCIDR: "10.0.0.0/13"
-  rails:
-    - selector:
-        cel: 'device.attributes["dra.net"].ipv4.startsWith("10.0.")'
-      config:
-        subnet: "10.0.0.0/16"
-        gateway: "10.0.0.1"
-        mtu: 9000
-        tableID: 100
+deviceParams:
+  configMapPath: "/etc/composite-dra/device-params/params.yaml"
 ```
 
-See [values.yaml](charts/composite-dra-driver/values.yaml) for all options.
+Opaque driver params (routes, gateways, MTU, etc.) are provided via an external ConfigMap — the composite driver never interprets their content. See [examples/](charts/composite-dra-driver/examples/) for ConfigMap templates and [values.yaml](charts/composite-dra-driver/values.yaml) for all options.
 
 ## Requirements
 
@@ -169,7 +161,7 @@ See [values.yaml](charts/composite-dra-driver/values.yaml) for all options.
 
 - **Device sharing conflict across compositions** — when multiple compositions share a source (e.g. GPU appears in both `gpu` and `gpu-nic-pair`), the scheduler can allocate the same physical device to both compositions on the same node. Each composition publishes an independent pool — the scheduler has no cross-pool mutual exclusion. Safe when pods land on different nodes or only one composition is actively used at a time. Fix requires pairer-side device partitioning. ([#28](https://github.com/openshift-psap/composite-dra-driver/issues/28))
 
-- **NIC config coupled to dranet** — `RailConfig` and shadow claim opaque parameters use dranet's internal JSON format. Other NIC drivers would require code changes. ([#9](https://github.com/openshift-psap/composite-dra-driver/issues/9))
+- **VF support requires external IPAM** — PF mode works with the external device params ConfigMap. VF mode needs an external controller to allocate IPs and populate the ConfigMap (VFs lack `dra.net/ipv4`). ([#34](https://github.com/openshift-psap/composite-dra-driver/issues/34))
 
 - **Stale ResourceClaimTemplates** — webhook creates templates but doesn't clean them up on pod deletion. Templates accumulate until manually deleted. Reconciler planned. ([#17](https://github.com/openshift-psap/composite-dra-driver/issues/17))
 
