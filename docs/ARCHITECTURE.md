@@ -221,7 +221,7 @@ Compositions are not limited to pairs. A 3-member composition (GPU + NIC + NVSwi
 |-----|-------|----------|-----------|--------------|
 | Consumable capacity | [#21](https://github.com/openshift-psap/composite-dra-driver/issues/21) | **High** | Discrete device model vs grouped mode + AllowMultipleAllocations | Investigation in progress |
 | NUMA affinity enforcement | [#1](https://github.com/openshift-psap/composite-dra-driver/issues/1) | Medium | matchAttribute is hard constraint, no best-effort | Per-NUMA DeviceClasses or scheduler plugin |
-| Cross-composition device exclusion | [#28](https://github.com/openshift-psap/composite-dra-driver/issues/28) | Medium | DRA has no cross-pool mutual exclusion | Pairer-side device partitioning |
+| Cross-composition device exclusion | [#28](https://github.com/openshift-psap/composite-dra-driver/issues/28) | Medium | DRA has no cross-pool mutual exclusion | Pairer-side partitioning or continuous synthesizer recomputation ([upstream discussion](https://github.com/kubernetes-sigs/wg-device-management/issues/54)) |
 | VF support + external IPAM | [#34](https://github.com/openshift-psap/composite-dra-driver/issues/34) | Medium | VFs lack IP attributes at pairing time, need external IPAM | External IPAM controller integration |
 | Blast radius isolation | [#35](https://github.com/openshift-psap/composite-dra-driver/issues/35) | Medium | Single ConfigMap = single point of failure | Per-composition ConfigMaps or partial startup |
 | Observability | [#18](https://github.com/openshift-psap/composite-dra-driver/issues/18) | Medium | No metrics, no K8s events, no structured logging | Prometheus + K8s events |
@@ -267,7 +267,12 @@ The underlying driver (nvidia) rejects the second `PrepareResourceClaims` call w
 
 Current safety: works only when one composition type is used per cluster, or workloads are spread across nodes.
 
-Proposed fix: **pairer-side device partitioning** — assign each physical device to at most one composition's pool. Options are priority-based (higher-priority compositions pick first), ratio-based (admin specifies device quota per composition), or exclusive-source (disjoint source references).
+Two proposed approaches ([#28](https://github.com/openshift-psap/composite-dra-driver/issues/28), [upstream discussion](https://github.com/kubernetes-sigs/wg-device-management/issues/54)):
+
+- **Pairer-side partitioning** — statically assign each physical device to at most one composition's pool. Options: priority-based (higher-priority compositions pick first), ratio-based (admin specifies device quota), or exclusive-source (disjoint source references). No race window, but wastes devices that could serve either pool.
+- **Continuous synthesizer recomputation** — the synthesizer already re-watches underlying ResourceSlices on change. Extend it to detect when a member device is allocated by another pool and remove the corresponding composite devices from published ResourceSlices. Full device utilization, but a small race window exists between allocation and recomputation where the scheduler could still pick a stale composite device (Prepare would fail, scheduler reschedules).
+
+Neither is implemented yet.
 
 ---
 
@@ -519,7 +524,7 @@ The discrete-device model cannot express CPU/memory grouped-mode resources with 
 
 ### Q3: Cross-composition device exclusion — where should it be solved?
 
-Pairer-side device partitioning works but is a local workaround. The root problem is that DRA has no cross-pool mutual exclusion primitive. Is this a gap the DRA API should fill (benefiting the ecosystem), or is local partitioning the right long-term answer for composition drivers?
+Two driver-level approaches are proposed: static pairer-side partitioning (wastes devices, no race) or continuous synthesizer recomputation (full utilization, small race window). The root problem is that DRA has no cross-pool mutual exclusion primitive. Is this a gap the DRA API should fill (benefiting the ecosystem), or is the driver layer the right place? [Upstream discussion](https://github.com/kubernetes-sigs/wg-device-management/issues/54).
 
 ### Q4: Virtual ResourceSlice publishing — precedent or anti-pattern?
 
