@@ -108,6 +108,10 @@ kubectl exec <pod> -- rdma link show         # RDMA devices
 - **Crash recovery** — BoltDB persistence + orphan reconciler.
 - **HA** — driver: DaemonSet (one per node). Webhook: multi-replica Deployment.
 
+## AI-Assisted Development
+
+Built with [Claude Code](https://claude.ai/code) (Claude Opus 4.6).
+
 ## Configuration
 
 ```yaml
