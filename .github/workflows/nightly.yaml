@@ -1,0 +1,42 @@
+name: Nightly Images
+
+on:
+  schedule:
+    - cron: '12 4 * * *'
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    strategy:
+      matrix:
+        component: [driver, webhook]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set date tag
+        id: date
+        run: echo "tag=nightly-main-$(date +%m-%d-%y)" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          target: ${{ matrix.component }}
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/composite-dra-${{ matrix.component }}:${{ steps.date.outputs.tag }}
+            ghcr.io/${{ github.repository_owner }}/composite-dra-${{ matrix.component }}:nightly-main-latest
