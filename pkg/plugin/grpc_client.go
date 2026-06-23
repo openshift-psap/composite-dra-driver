@@ -57,8 +57,7 @@ func (c *GRPCClient) Prepare(ctx context.Context, driverName string, claim *shad
 		},
 	}
 
-	klog.V(2).Infof("grpc: calling NodePrepareResources on %s for claim %s/%s (uid=%s)",
-		driverName, claim.Namespace, claim.Name, claim.UID)
+	klog.V(2).InfoS("grpc: calling NodePrepareResources", "driver", driverName, "namespace", claim.Namespace, "claim", claim.Name, "uid", claim.UID)
 
 	resp, err := client.NodePrepareResources(ctx, req)
 	if err != nil {
@@ -93,8 +92,7 @@ func (c *GRPCClient) Unprepare(ctx context.Context, driverName string, claim *sh
 		},
 	}
 
-	klog.V(2).Infof("grpc: calling NodeUnprepareResources on %s for claim %s/%s",
-		driverName, claim.Namespace, claim.Name)
+	klog.V(2).InfoS("grpc: calling NodeUnprepareResources", "driver", driverName, "namespace", claim.Namespace, "claim", claim.Name)
 
 	resp, err := client.NodeUnprepareResources(ctx, req)
 	if err != nil {
@@ -142,7 +140,7 @@ func (c *GRPCClient) getConn(driverName string) (*grpc.ClientConn, error) {
 	}
 
 	c.conns[driverName] = conn
-	klog.Infof("grpc: connected to %s at %s", driverName, socketPath)
+	klog.InfoS("grpc: connected", "driver", driverName, "socket", socketPath)
 	return conn, nil
 }
 
@@ -152,7 +150,7 @@ func (c *GRPCClient) Close() {
 	defer c.mu.Unlock()
 	for name, conn := range c.conns {
 		conn.Close()
-		klog.Infof("grpc: closed connection to %s", name)
+		klog.InfoS("grpc: closed connection", "driver", name)
 	}
 	c.conns = make(map[string]*grpc.ClientConn)
 }

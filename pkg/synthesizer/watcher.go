@@ -58,7 +58,7 @@ func (w *Watcher) Start(ctx context.Context) error {
 	factory.Start(ctx.Done())
 	factory.WaitForCacheSync(ctx.Done())
 
-	klog.Infof("watcher: cache synced, triggering initial computation")
+	klog.InfoS("watcher: cache synced, triggering initial computation")
 	w.onChange()
 
 	<-ctx.Done()
@@ -100,7 +100,7 @@ func (w *Watcher) debouncedOnChange() {
 		w.debounceTimer.Stop()
 	}
 	w.debounceTimer = time.AfterFunc(debounceInterval, func() {
-		klog.V(2).Info("watcher: debounce fired, triggering recomputation")
+		klog.V(2).InfoS("watcher: debounce fired, triggering recomputation")
 		w.onChange()
 	})
 }
@@ -111,7 +111,7 @@ func (w *Watcher) GetSourceDevices(sources map[string]string) map[string][]Sourc
 
 	allSlices, err := w.lister.List(labels.Everything())
 	if err != nil {
-		klog.Errorf("watcher: list ResourceSlices: %v", err)
+		klog.ErrorS(err, "watcher: list ResourceSlices failed")
 		return result
 	}
 

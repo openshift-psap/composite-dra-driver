@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	admissionv1 "k8s.io/api/admission/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -16,6 +17,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/klog/v2"
+
+	"github.com/openshift-psap/composite-dra-driver/pkg/metrics"
 )
 
 var (
@@ -38,8 +41,12 @@ func NewHandler(mutator *Mutator) *Handler {
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
+	defer func() { metrics.WebhookDurationSeconds.Observe(time.Since(start).Seconds()) }()
+
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
+		metrics.WebhookErrorsTotal.WithLabelValues("read").Inc()
 		http.Error(w, fmt.Sprintf("read body: %v", err), http.StatusBadRequest)
 		return
 	}
@@ -47,6 +54,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	review := &admissionv1.AdmissionReview{}
 	deserializer := codecs.UniversalDeserializer()
 	if _, _, err := deserializer.Decode(body, nil, review); err != nil {
+		metrics.WebhookErrorsTotal.WithLabelValues("decode").Inc()
 		http.Error(w, fmt.Sprintf("decode: %v", err), http.StatusBadRequest)
 		return
 	}
@@ -57,6 +65,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	respBytes, err := json.Marshal(review)
 	if err != nil {
+		metrics.WebhookErrorsTotal.WithLabelValues("marshal").Inc()
 		http.Error(w, fmt.Sprintf("marshal response: %v", err), http.StatusInternalServerError)
 		return
 	}
@@ -74,7 +83,8 @@ func (h *Handler) handleAdmission(ctx context.Context, review *admissionv1.Admis
 
 	pod := &corev1.Pod{}
 	if err := json.Unmarshal(req.Object.Raw, pod); err != nil {
-		klog.Errorf("webhook: unmarshal pod: %v", err)
+		metrics.WebhookErrorsTotal.WithLabelValues("unmarshal").Inc()
+		klog.ErrorS(err, "webhook: unmarshal pod failed")
 		return &admissionv1.AdmissionResponse{
 			Allowed: false,
 			Result:  &metav1.Status{Message: fmt.Sprintf("unmarshal pod: %v", err)},
@@ -88,7 +98,8 @@ func (h *Handler) handleAdmission(ctx context.Context, review *admissionv1.Admis
 
 	patches, err := h.mutator.Mutate(ctx, pod, namespace)
 	if err != nil {
-		klog.Errorf("webhook: mutate pod %s/%s: %v", namespace, pod.Name, err)
+		metrics.WebhookErrorsTotal.WithLabelValues("mutate").Inc()
+		klog.ErrorS(err, "webhook: mutate pod failed", "namespace", namespace, "name", pod.Name)
 		return &admissionv1.AdmissionResponse{
 			Allowed: false,
 			Result:  &metav1.Status{Message: fmt.Sprintf("mutation failed: %v", err)},

@@ -97,7 +97,7 @@ func (s *StateStore) ListAll() ([]ShadowRecord, error) {
 		return tx.Bucket(shadowBucket).ForEach(func(k, v []byte) error {
 			var rec ShadowRecord
 			if err := json.Unmarshal(v, &rec); err != nil {
-				klog.Warningf("state: skip corrupt record %s: %v", string(k), err)
+				klog.ErrorS(err, "state: skip corrupt record", "uid", string(k))
 				return nil
 			}
 			records = append(records, rec)

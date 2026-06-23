@@ -1,0 +1,20 @@
+{{- if .Values.metrics.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "composite-dra.fullname" . }}-metrics
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "composite-dra.labels" . | nindent 4 }}
+    app.kubernetes.io/component: driver
+spec:
+  clusterIP: None
+  ports:
+    - port: {{ .Values.metrics.port }}
+      targetPort: metrics
+      name: metrics
+      protocol: TCP
+  selector:
+    {{- include "composite-dra.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: driver
+{{- end }}

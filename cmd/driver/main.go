@@ -7,6 +7,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -15,15 +16,21 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/scheme"
+	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/dynamic-resource-allocation/kubeletplugin"
 	"k8s.io/dynamic-resource-allocation/resourceslice"
 	"k8s.io/klog/v2"
 
 	"github.com/openshift-psap/composite-dra-driver/pkg/config"
+	_ "github.com/openshift-psap/composite-dra-driver/pkg/metrics"
 	"github.com/openshift-psap/composite-dra-driver/pkg/plugin"
 	"github.com/openshift-psap/composite-dra-driver/pkg/shadow"
 	"github.com/openshift-psap/composite-dra-driver/pkg/store"
@@ -105,6 +112,11 @@ func main() {
 	grpcClient := plugin.NewGRPCClient(pluginDir)
 	defer grpcClient.Close()
 
+	eventBroadcaster := record.NewBroadcaster()
+	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeClient.CoreV1().Events("")})
+	defer eventBroadcaster.Shutdown()
+	eventRecorder := eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: cfg.Driver.Name})
+
 	compositePlugin := plugin.NewCompositePlugin(
 		cfg.Driver.Name,
 		deviceStore,
@@ -112,6 +124,7 @@ func main() {
 		paramsResolver,
 		grpcClient,
 		stateStore,
+		eventRecorder,
 	)
 
 	pluginSocketDir := filepath.Join(pluginDir, cfg.Driver.Name)
@@ -119,7 +132,7 @@ func main() {
 		klog.Fatalf("create plugin socket dir %s: %v", pluginSocketDir, err)
 	}
 
-	klog.Infof("composite-dra-driver starting on node %s with driver %s", nodeName, cfg.Driver.Name)
+	klog.InfoS("composite-dra-driver starting", "node", nodeName, "driver", cfg.Driver.Name)
 
 	helper, err := kubeletplugin.Start(ctx, compositePlugin,
 		kubeletplugin.DriverName(cfg.Driver.Name),
@@ -143,21 +156,31 @@ func main() {
 
 	go plugin.StartReconciler(ctx, kubeClient.ResourceV1(), cfg.Driver.Name, 5*time.Minute)
 
+	metricsMux := http.NewServeMux()
+	metricsMux.Handle("/metrics", promhttp.Handler())
+	metricsServer := &http.Server{Addr: ":8080", Handler: metricsMux}
+	go func() {
+		klog.InfoS("metrics server listening", "addr", ":8080")
+		if err := metricsServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			klog.ErrorS(err, "metrics server failed")
+		}
+	}()
+
 	<-ctx.Done()
 	klog.Info("shutting down")
+	metricsServer.Shutdown(context.Background())
 }
 
 func checkKubeVersion(disco discovery.DiscoveryInterface) {
 	info, err := disco.ServerVersion()
 	if err != nil {
-		klog.Warningf("could not query API server version: %v", err)
+		klog.ErrorS(err, "could not query API server version")
 		return
 	}
 	minor, _ := strconv.Atoi(strings.TrimRight(info.Minor, "+"))
 	if minor >= 36 {
-		klog.Infof("K8s %s detected — DRAExtendedResource feature gate available; "+
-			"webhook is not needed. Use webhook.mode=disabled or webhook.mode=auto in Helm values",
-			fmt.Sprintf("%s.%s", info.Major, info.Minor))
+		klog.InfoS("DRAExtendedResource feature gate available, webhook not needed",
+			"version", fmt.Sprintf("%s.%s", info.Major, info.Minor))
 	}
 }
 

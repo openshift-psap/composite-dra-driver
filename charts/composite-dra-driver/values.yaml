@@ -163,6 +163,13 @@ compositions:
 # deviceParams:
 #   configMapPath: "/etc/composite-dra/device-params/params.yaml"
 
+metrics:
+  enabled: true
+  port: 8080
+  serviceMonitor:
+    enabled: false
+    interval: 30s
+
 openshift:
   scc:
     enabled: false

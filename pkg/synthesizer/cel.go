@@ -46,7 +46,7 @@ func NewCELFilter() (*CELFilter, error) {
 func (f *CELFilter) Match(expression string, attrs map[string]resourceapi.DeviceAttribute) bool {
 	prog, err := f.getProgram(expression)
 	if err != nil {
-		klog.V(2).Infof("cel: compile %q: %v", expression, err)
+		klog.V(2).InfoS("cel: compile failed", "expression", expression, "err", err)
 		return false
 	}
 
@@ -55,7 +55,7 @@ func (f *CELFilter) Match(expression string, attrs map[string]resourceapi.Device
 		"device": deviceMap,
 	})
 	if err != nil {
-		klog.V(4).Infof("cel: eval %q: %v", expression, err)
+		klog.V(4).InfoS("cel: eval failed", "expression", expression, "err", err)
 		return false
 	}
 

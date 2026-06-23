@@ -39,6 +39,11 @@ spec:
             - containerPort: {{ .Values.webhook.port }}
               name: https
               protocol: TCP
+            {{- if .Values.metrics.enabled }}
+            - containerPort: {{ .Values.metrics.port }}
+              name: metrics
+              protocol: TCP
+            {{- end }}
           readinessProbe:
             httpGet:
               path: /healthz
@@ -70,6 +75,12 @@ spec:
     - port: 443
       targetPort: https
       protocol: TCP
+    {{- if .Values.metrics.enabled }}
+    - port: {{ .Values.metrics.port }}
+      targetPort: metrics
+      name: metrics
+      protocol: TCP
+    {{- end }}
   selector:
     {{- include "composite-dra.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/component: webhook

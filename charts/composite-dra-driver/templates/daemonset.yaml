@@ -61,6 +61,12 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
+          {{- if .Values.metrics.enabled }}
+          ports:
+            - containerPort: {{ .Values.metrics.port }}
+              name: metrics
+              protocol: TCP
+          {{- end }}
           resources:
             {{- toYaml .Values.driver.resources | nindent 12 }}
           securityContext:
