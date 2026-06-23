@@ -35,6 +35,9 @@ spec:
             {{- range .Values.compositions }}
             - --resource-mapping={{ printf "%s/%s=%s" $.Values.driver.name .name (.deviceClassName | default (printf "composite-%s" .name)) }}
             {{- end }}
+            {{- if .Values.metrics.enabled }}
+            - --metrics-port={{ .Values.metrics.port }}
+            {{- end }}
           ports:
             - containerPort: {{ .Values.webhook.port }}
               name: https

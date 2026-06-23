@@ -189,14 +189,20 @@ func (p *CompositePlugin) prepareClaim(
 	metrics.PrepareShadowCreateDurationSeconds.WithLabelValues(composition).Observe(time.Since(shadowStart).Seconds())
 
 	var shadows []shadowRecord
+	var firstErr error
 	for _, w := range work {
-		if w.err != nil {
+		if w.shadow.info != nil {
+			shadows = append(shadows, w.shadow)
+		}
+		if w.err != nil && firstErr == nil {
+			firstErr = w.err
 			p.recorder.Eventf(claim, corev1.EventTypeWarning, "PrepareFailed",
 				"Shadow claim creation failed for %s/%s: %v", w.member.Driver, w.member.Device, w.err)
-			p.cleanupShadows(ctx, shadows)
-			return nil, w.err
 		}
-		shadows = append(shadows, w.shadow)
+	}
+	if firstErr != nil {
+		p.cleanupShadows(ctx, shadows)
+		return nil, firstErr
 	}
 
 	// Phase 2: Call gRPC prepare on all underlying drivers in parallel
@@ -336,10 +342,11 @@ func (p *CompositePlugin) persistShadows(claim *resourceapi.ResourceClaim, shado
 	entries := make([]store.ShadowEntry, len(shadows))
 	for i, sr := range shadows {
 		entries[i] = store.ShadowEntry{
-			DriverName: sr.driverName,
-			Namespace:  sr.info.Namespace,
-			Name:       sr.info.Name,
-			UID:        sr.info.UID,
+			DriverName:  sr.driverName,
+			Namespace:   sr.info.Namespace,
+			Name:        sr.info.Name,
+			UID:         sr.info.UID,
+			Composition: sr.composition,
 		}
 	}
 	if err := p.stateStore.SaveShadows(store.ShadowRecord{
@@ -373,7 +380,8 @@ func (p *CompositePlugin) restoreFromState() {
 		var shadows []shadowRecord
 		for _, entry := range rec.Shadows {
 			shadows = append(shadows, shadowRecord{
-				driverName: entry.DriverName,
+				driverName:  entry.DriverName,
+				composition: entry.Composition,
 				info: &shadow.ShadowClaimInfo{
 					Namespace: entry.Namespace,
 					Name:      entry.Name,

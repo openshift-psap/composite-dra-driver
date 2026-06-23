@@ -122,9 +122,8 @@ func (m *Mutator) Mutate(ctx context.Context, pod *corev1.Pod, namespace string)
 			}
 		} else {
 			metrics.WebhookTemplatesCreatedTotal.WithLabelValues(cr.deviceClassName).Inc()
+			klog.InfoS("webhook: created ResourceClaimTemplate", "namespace", namespace, "template", templateName, "count", cr.totalCount, "deviceClass", cr.deviceClassName)
 		}
-
-		klog.InfoS("webhook: created ResourceClaimTemplate", "namespace", namespace, "template", templateName, "count", cr.totalCount, "deviceClass", cr.deviceClassName)
 
 		claims = append(claims, claimInfo{
 			templateName:    templateName,
@@ -137,7 +136,12 @@ func (m *Mutator) Mutate(ctx context.Context, pod *corev1.Pod, namespace string)
 
 	patches := m.buildPatches(pod, matches, claims)
 
+	seenCompositions := make(map[string]struct{}, len(claims))
 	for _, claim := range claims {
+		if _, seen := seenCompositions[claim.deviceClassName]; seen {
+			continue
+		}
+		seenCompositions[claim.deviceClassName] = struct{}{}
 		metrics.WebhookMutationsTotal.WithLabelValues(claim.deviceClassName).Inc()
 	}
 

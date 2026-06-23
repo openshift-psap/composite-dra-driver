@@ -41,11 +41,12 @@ func main() {
 	klog.InitFlags(nil)
 
 	var (
-		configPath string
-		nodeName   string
-		kubeconfig string
-		pluginDir  string
-		stateDir   string
+		configPath  string
+		nodeName    string
+		kubeconfig  string
+		pluginDir   string
+		stateDir    string
+		metricsPort int
 	)
 
 	flag.StringVar(&configPath, "config", "/etc/composite-dra/config.yaml", "path to driver config")
@@ -53,6 +54,7 @@ func main() {
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "path to kubeconfig (optional, uses in-cluster if empty)")
 	flag.StringVar(&pluginDir, "plugin-dir", "/var/lib/kubelet/plugins", "kubelet plugins directory")
 	flag.StringVar(&stateDir, "state-dir", "/var/lib/composite-dra", "directory for persistent state")
+	flag.IntVar(&metricsPort, "metrics-port", 8080, "port for Prometheus metrics endpoint")
 	flag.Parse()
 
 	if nodeName == "" {
@@ -156,11 +158,12 @@ func main() {
 
 	go plugin.StartReconciler(ctx, kubeClient.ResourceV1(), cfg.Driver.Name, 5*time.Minute)
 
+	metricsAddr := fmt.Sprintf(":%d", metricsPort)
 	metricsMux := http.NewServeMux()
 	metricsMux.Handle("/metrics", promhttp.Handler())
-	metricsServer := &http.Server{Addr: ":8080", Handler: metricsMux}
+	metricsServer := &http.Server{Addr: metricsAddr, Handler: metricsMux}
 	go func() {
-		klog.InfoS("metrics server listening", "addr", ":8080")
+		klog.InfoS("metrics server listening", "addr", metricsAddr)
 		if err := metricsServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			klog.ErrorS(err, "metrics server failed")
 		}
@@ -168,7 +171,11 @@ func main() {
 
 	<-ctx.Done()
 	klog.Info("shutting down")
-	metricsServer.Shutdown(context.Background())
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer shutdownCancel()
+	if err := metricsServer.Shutdown(shutdownCtx); err != nil {
+		klog.ErrorS(err, "metrics server graceful shutdown failed")
+	}
 }
 
 func checkKubeVersion(disco discovery.DiscoveryInterface) {

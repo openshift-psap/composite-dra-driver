@@ -48,6 +48,7 @@ func main() {
 
 	var (
 		port               int
+		metricsPort        int
 		tlsCert            string
 		tlsKey             string
 		kubeconfig         string
@@ -60,6 +61,7 @@ func main() {
 	resourceMappings := make(stringMapFlag)
 
 	flag.IntVar(&port, "port", 8443, "webhook server port")
+	flag.IntVar(&metricsPort, "metrics-port", 8080, "port for Prometheus metrics endpoint")
 	flag.StringVar(&tlsCert, "tls-cert", "/etc/webhook/certs/tls.crt", "TLS certificate path")
 	flag.StringVar(&tlsKey, "tls-key", "/etc/webhook/certs/tls.key", "TLS key path")
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "path to kubeconfig (optional)")
@@ -127,11 +129,12 @@ func main() {
 
 	go webhook.StartTemplateReconciler(ctx, kubeClient.ResourceV1(), kubeClient.CoreV1(), reconcileInterval, reconcileGrace)
 
+	metricsAddr := fmt.Sprintf(":%d", metricsPort)
 	metricsMux := http.NewServeMux()
 	metricsMux.Handle("/metrics", promhttp.Handler())
-	metricsServer := &http.Server{Addr: ":8080", Handler: metricsMux}
+	metricsServer := &http.Server{Addr: metricsAddr, Handler: metricsMux}
 	go func() {
-		klog.InfoS("metrics server listening", "addr", ":8080")
+		klog.InfoS("metrics server listening", "addr", metricsAddr)
 		if err := metricsServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			klog.ErrorS(err, "metrics server failed")
 		}

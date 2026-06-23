@@ -56,6 +56,9 @@ spec:
             - --state-dir={{ .Values.driver.stateDir }}
             - --plugin-dir={{ .Values.driver.pluginDir }}
             - --v={{ .Values.driver.verbosity }}
+            {{- if .Values.metrics.enabled }}
+            - --metrics-port={{ .Values.metrics.port }}
+            {{- end }}
           env:
             - name: NODE_NAME
               valueFrom:
