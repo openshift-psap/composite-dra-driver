@@ -266,6 +266,7 @@ func (p *CompositePlugin) prepareClaim(
 
 	elapsed := time.Since(prepareStart)
 	metrics.PrepareDurationSeconds.WithLabelValues(composition).Observe(elapsed.Seconds())
+	metrics.ClaimsActive.WithLabelValues(composition).Inc()
 	metrics.ShadowClaimsActive.WithLabelValues(composition).Add(float64(len(shadows)))
 
 	p.recorder.Eventf(claim, corev1.EventTypeNormal, "PrepareCompleted",
@@ -311,6 +312,7 @@ func (p *CompositePlugin) unprepareClaim(
 	}
 
 	if shadowCount > 0 {
+		metrics.ClaimsActive.WithLabelValues(shadows[0].composition).Dec()
 		metrics.ShadowClaimsActive.WithLabelValues(shadows[0].composition).Sub(float64(shadowCount))
 	}
 

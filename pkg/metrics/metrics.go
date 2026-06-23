@@ -28,6 +28,12 @@ var (
 
 // Driver: prepare/unprepare
 var (
+	ClaimsActive = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: namespace,
+		Name:      "claims_active",
+		Help:      "Number of composite resource claims currently prepared.",
+	}, []string{"composition"})
+
 	PrepareDurationSeconds = promauto.NewHistogramVec(prometheus.HistogramOpts{
 		Namespace: namespace,
 		Name:      "prepare_duration_seconds",
