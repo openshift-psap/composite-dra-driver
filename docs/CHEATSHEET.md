@@ -9,6 +9,13 @@ helm install composite charts/composite-dra-driver \
   --create-namespace \
   -f charts/composite-dra-driver/values-poseidon.yaml
 
+# With Prometheus ServiceMonitor (requires Prometheus Operator or OpenShift user workload monitoring)
+helm install composite charts/composite-dra-driver \
+  -n composite-dra-system \
+  --create-namespace \
+  -f charts/composite-dra-driver/values-poseidon.yaml \
+  --set metrics.serviceMonitor.enabled=true
+
 # Driver + webhook explicitly enabled
 helm install composite charts/composite-dra-driver \
   -n composite-dra-system \
@@ -16,12 +23,17 @@ helm install composite charts/composite-dra-driver \
   -f charts/composite-dra-driver/values-poseidon.yaml \
   --set webhook.mode=enabled
 
-# Upgrade (e.g., enable webhook later)
+# Upgrade (e.g., enable metrics scraping later)
 helm upgrade composite charts/composite-dra-driver \
   -n composite-dra-system \
   -f charts/composite-dra-driver/values-poseidon.yaml \
-  --set webhook.mode=enabled
+  --set metrics.serviceMonitor.enabled=true
 ```
+
+**Prerequisites for metrics scraping:**
+- **OpenShift:** user workload monitoring must be enabled (`enableUserWorkload: true` in `cluster-monitoring-config` ConfigMap in `openshift-monitoring` namespace)
+- **Vanilla K8s:** [kube-prometheus-stack](https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack) or equivalent providing the ServiceMonitor CRD
+- **RBAC:** Events permissions (create/patch) are included in the Helm chart ClusterRole automatically — no additional setup needed
 
 ## Request GPU-NIC Pairs
 
