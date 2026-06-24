@@ -311,6 +311,25 @@ func TestValidate_DeviceParamsMissingPath(t *testing.T) {
 	}
 }
 
+func TestValidate_AutoMultiSourceNoConstraints(t *testing.T) {
+	cfg := validConfig()
+	cfg.Compositions[0].Constraints = nil
+	if err := Validate(cfg); err == nil {
+		t.Fatal("expected error for auto pairing with multiple sources and no constraints")
+	}
+}
+
+func TestValidate_AutoSingleSourceNoConstraints(t *testing.T) {
+	cfg := validConfig()
+	cfg.Compositions[0] = CompositionConfig{
+		Name:    "gpu-only",
+		Members: []MemberConfig{{Source: "gpu", Count: 1}},
+	}
+	if err := Validate(cfg); err != nil {
+		t.Fatalf("single-source composition should not require constraints: %v", err)
+	}
+}
+
 func TestParse(t *testing.T) {
 	yaml := `
 driver:

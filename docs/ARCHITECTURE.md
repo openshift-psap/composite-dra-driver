@@ -120,7 +120,10 @@ flowchart TD
 | Strategy | Config | Algorithm | Use Case |
 |----------|--------|-----------|----------|
 | Auto + matchAttribute | `constraints: [{type: matchAttribute, attribute: "resource.kubernetes.io/pcieRoot"}]` | Group devices by shared attribute value. Generate C(n,k) combinations within each group. Group must have all member sources at required counts. | GPU+NIC by PCIe root, NUMA-locality pairing |
+| Single-source (auto, no constraints) | No constraints, single member source | Wrap each device individually as a composite device. No cross-source pairing. | GPU-only composition for DeviceClass/extended resource exposure |
 | Explicit (CEL per MCP) | `pairingMode: explicit`, `nodePoolLabelKey`, `nodePools[].pairs[].selectors` | Match node by label → evaluate per-source CEL selectors → select first N matching devices → consumed-set tracking prevents reuse. Rail and NUMA are set explicitly per pair. | Heterogeneous hardware (e.g., AKS VMs where pcieRoot isn't exposed), known-good pairings |
+
+**Constraint requirement:** Multi-source auto compositions must have at least one constraint. Compositions exist to express a meaningful relationship between devices — unconstrained Cartesian products produce arbitrary pairings with no grouping criterion.
 
 Implementation: `pkg/synthesizer/pairer.go`. The `computeForComposition()` method routes to the appropriate strategy based on `PairingMode` and presence of constraints.
 
