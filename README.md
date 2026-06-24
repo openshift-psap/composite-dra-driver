@@ -152,6 +152,82 @@ deviceParams:
 
 Opaque driver params (routes, gateways, MTU, etc.) are provided via an external ConfigMap — the composite driver never interprets their content. See [examples/](charts/composite-dra-driver/examples/) for ConfigMap templates and [values.yaml](charts/composite-dra-driver/values.yaml) for all options.
 
+## Observability
+
+The driver and webhook expose Prometheus metrics, emit Kubernetes Events, and use structured logging.
+
+### Prometheus Metrics
+
+Both binaries serve `/metrics` on port 8080 (configurable via `--metrics-port`).
+
+**Driver metrics** (labeled by `composition`):
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| `composite_dra_synthesis_devices_total` | Gauge | Composite devices published per composition |
+| `composite_dra_synthesis_duration_seconds` | Histogram | Synthesis pipeline duration |
+| `composite_dra_claims_active` | Gauge | Composite claims currently prepared |
+| `composite_dra_shadow_claims_active` | Gauge | Shadow claims currently active (N per composite claim) |
+| `composite_dra_prepare_duration_seconds` | Histogram | End-to-end Prepare time |
+| `composite_dra_prepare_shadow_create_duration_seconds` | Histogram | Shadow claim creation phase |
+| `composite_dra_prepare_grpc_duration_seconds` | Histogram | gRPC delegation phase |
+| `composite_dra_grpc_errors_total` | Counter | gRPC errors (also labeled by `source_driver`) |
+| `composite_dra_device_params_errors_total` | Counter | Device parameter resolution failures |
+| `composite_dra_reconciler_claims_cleaned_total` | Counter | Orphaned shadow claims GC'd |
+
+**Webhook metrics:**
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| `composite_dra_webhook_mutations_total` | Counter | Pods mutated (labeled by `composition`) |
+| `composite_dra_webhook_skipped_total` | Counter | Pods skipped (labeled by `reason`) |
+| `composite_dra_webhook_errors_total` | Counter | Errors by stage (unmarshal, mutate, marshal) |
+| `composite_dra_webhook_duration_seconds` | Histogram | Mutation request latency |
+| `composite_dra_webhook_templates_created_total` | Counter | ResourceClaimTemplates created |
+| `composite_dra_webhook_reconciler_templates_cleaned_total` | Counter | Stale templates GC'd |
+
+### Scraping Setup
+
+**OpenShift** (built-in monitoring):
+1. Enable user workload monitoring (`enableUserWorkload: true` in `cluster-monitoring-config` ConfigMap)
+2. Set `metrics.serviceMonitor.enabled=true` in Helm values
+3. Metrics appear in **Observe > Metrics** in the OpenShift console
+
+**Vanilla Kubernetes:**
+1. Install [kube-prometheus-stack](https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack) (provides Prometheus Operator + ServiceMonitor CRD)
+2. Set `metrics.serviceMonitor.enabled=true` in Helm values
+3. Prometheus Operator auto-discovers the ServiceMonitor
+
+**Without Prometheus Operator:** scrape `<pod-ip>:8080/metrics` directly via static Prometheus config or any OpenMetrics-compatible collector.
+
+### Kubernetes Events
+
+Events are emitted on composite ResourceClaims during prepare/unprepare:
+
+| Event | When |
+|-------|------|
+| `PrepareStarted` | Shadow claim creation beginning |
+| `PrepareCompleted` | All shadow claims + gRPC done (includes timing) |
+| `PrepareFailed` | Which driver/device failed |
+| `UnprepareCompleted` | Cleanup done |
+
+View with `kubectl describe resourceclaim <name>` or `kubectl get events --field-selector reason=PrepareCompleted`.
+
+### Structured Logging
+
+All log output uses `klog.InfoS`/`ErrorS` with key-value pairs. Enable JSON output for log aggregation:
+
+```bash
+# In Helm values or container args:
+--logging-format=json
+```
+
+### Limitations
+
+- Gauge metrics (`claims_active`, `shadow_claims_active`, `synthesis_devices_total`) reset to zero on pod restart. Prometheus handles this via `resets()` for counters; for gauges, expect a brief dip after restarts.
+- Metrics port (8080) is plaintext HTTP. If your security policy requires TLS on all ports, a sidecar proxy (e.g., kube-rbac-proxy) is needed.
+- `synthesis_duration_seconds` records the full pairer+publisher pipeline time. When multiple compositions exist, each gets the same duration value (single `recompute()` call processes all compositions).
+
 ## Requirements
 
 - Kubernetes 1.34+ with DRA enabled
@@ -166,10 +242,6 @@ Opaque driver params (routes, gateways, MTU, etc.) are provided via an external 
 - **Device sharing conflict across compositions** — when multiple compositions share a source (e.g. GPU appears in both `gpu` and `gpu-nic-pair`), the scheduler can allocate the same physical device to both compositions on the same node. Each composition publishes an independent pool — the scheduler has no cross-pool mutual exclusion. Safe when pods land on different nodes or only one composition is actively used at a time. Fix requires pairer-side device partitioning. ([#28](https://github.com/openshift-psap/composite-dra-driver/issues/28))
 
 - **VF support requires external IPAM** — PF mode works with the external device params ConfigMap. VF mode needs an external controller to allocate IPs and populate the ConfigMap (VFs lack `dra.net/ipv4`). ([#34](https://github.com/openshift-psap/composite-dra-driver/issues/34))
-
-- **Stale ResourceClaimTemplates** — webhook creates templates but doesn't clean them up on pod deletion. Templates accumulate until manually deleted. Reconciler planned. ([#17](https://github.com/openshift-psap/composite-dra-driver/issues/17))
-
-- **No metrics or events** — operational visibility is klog only. No Prometheus metrics, no Kubernetes Events on claims. ([#18](https://github.com/openshift-psap/composite-dra-driver/issues/18))
 
 - **Webhook required on K8s < 1.36** — the `DRAExtendedResource` feature gate is beta (on by default) in K8s 1.36, eliminating the need for the webhook. On K8s 1.35, the gate exists as alpha and can be manually enabled — see [Method 3 in the cheatsheet](docs/CHEATSHEET.md#method-3-extended-resource-k8s-135-with-draextendedresource-gate) and the [FAQ entry on dropping the webhook](docs/FAQ.md#when-can-we-drop-the-webhook-entirely). On K8s 1.34, the webhook is the only option for the resource request UX.
 
