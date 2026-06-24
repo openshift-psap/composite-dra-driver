@@ -160,6 +160,29 @@ Key settings:
 
 **Device sharing conflict across compositions (#28):** When multiple compositions share a source (e.g. GPU appears in both `gpu` and `gpu-nic-pair`), the scheduler can allocate the same physical device to both compositions on the same node. The underlying driver rejects the second allocation. This happens because each composition publishes an independent pool — the scheduler has no cross-pool mutual exclusion. Safe to use when pods land on different nodes or only one composition is actively used at a time. Fix requires pairer-side device partitioning.
 
+## Observability
+
+```bash
+# Check metrics (port-forward to any driver/webhook pod)
+oc port-forward -n composite-dra-system <driver-pod> 8080:8080
+curl -s localhost:8080/metrics | grep composite_dra
+
+# Key metrics
+curl -s localhost:8080/metrics | grep composite_dra_synthesis_devices_total    # devices published
+curl -s localhost:8080/metrics | grep composite_dra_claims_active              # claims prepared
+curl -s localhost:8080/metrics | grep composite_dra_shadow_claims_active       # shadow claims
+
+# K8s Events on ResourceClaims
+oc describe resourceclaim <name> -n <namespace>    # shows PrepareStarted/Completed/Failed
+oc get events --field-selector reason=PrepareCompleted
+
+# OpenShift: metrics in console
+# Observe > Metrics > composite_dra_synthesis_devices_total
+
+# Enable ServiceMonitor scraping
+helm upgrade composite ... --set metrics.serviceMonitor.enabled=true
+```
+
 ## Troubleshooting
 
 ```bash

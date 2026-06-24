@@ -126,26 +126,32 @@ composite-dra-driver/
 
 ### What's Stubbed (Phase 2)
 
-- `kubeletplugin.Helper.PublishResources()` call (publisher logs instead)
-- CEL filter evaluation (passes all devices through)
-- DRAPlugin interface implementation
-- Shadow claim CRUD
-- gRPC client to underlying driver sockets
-- Per-rail NIC config generation
-- BoltDB state persistence
+All Phase 2 items are now implemented. See Phase 2 status below.
 
-## Phase 2: Planned
+## Phase 2: Complete ✅
 
-| Component | Description |
-|-----------|-------------|
-| `pkg/plugin/plugin.go` | DRAPlugin interface (PrepareResourceClaims, UnprepareResourceClaims) |
-| `pkg/plugin/prepare.go` | Shadow claim creation + gRPC delegation to underlying drivers |
-| `pkg/plugin/unprepare.go` | Shadow claim cleanup + underlying driver Unprepare |
-| `pkg/plugin/grpc_client.go` | gRPC client connecting to `/var/lib/kubelet/plugins/<driver>/dra.sock` |
-| `pkg/shadow/claims.go` | Shadow ResourceClaim CRUD (create with pre-filled allocation + OwnerRef) |
-| `pkg/shadow/params.go` | External device params resolver (match device attrs → template → opaque params) |
-| `pkg/store/state.go` | BoltDB persistence for crash recovery |
-| Wire `kubeletplugin.Start()` | Register composite driver with kubelet, connect synthesizer + plugin |
+All components implemented and validated on hardware (poseidon cluster, 8×H100 + RDMA NICs).
+
+| Component | Status |
+|-----------|--------|
+| `pkg/plugin/plugin.go` — DRAPlugin (Prepare/Unprepare) | ✅ Implemented |
+| `pkg/plugin/grpc_client.go` — gRPC to underlying drivers | ✅ Implemented |
+| `pkg/shadow/claims.go` — Shadow claim CRUD | ✅ Implemented |
+| `pkg/shadow/params.go` — Device params resolver | ✅ Implemented |
+| `pkg/store/state.go` — BoltDB persistence | ✅ Implemented |
+| `pkg/synthesizer/cel.go` — CEL filter evaluation | ✅ Implemented |
+| `kubeletplugin.Start()` wiring | ✅ Implemented |
+
+## Phase 3: Observability — Complete ✅
+
+| Component | Status |
+|-----------|--------|
+| `pkg/metrics/metrics.go` — 16 Prometheus metrics | ✅ Implemented |
+| `/metrics` endpoint (port 8080) on driver + webhook | ✅ Implemented |
+| K8s Events on ResourceClaims (Prepare/Unprepare lifecycle) | ✅ Implemented |
+| Structured logging (klog.InfoS/ErrorS) across all packages | ✅ Implemented |
+| Helm ServiceMonitor + driver Service | ✅ Implemented |
+| Validated on OpenShift (poseidon) with user workload monitoring | ✅ Verified |
 
 ## Key Reference Files
 

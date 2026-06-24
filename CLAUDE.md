@@ -43,12 +43,13 @@ This is a Kubernetes **Dynamic Resource Allocation (DRA)** driver that composes 
 
 | Package | Role |
 |---------|------|
-| `pkg/plugin` | DRA plugin (Prepare/Unprepare), gRPC client to underlying drivers, orphan reconciler |
+| `pkg/plugin` | DRA plugin (Prepare/Unprepare), gRPC client to underlying drivers, orphan reconciler, K8s Events |
 | `pkg/synthesizer` | Watcher → Pairer → Publisher pipeline, CEL filter evaluation |
 | `pkg/shadow` | Shadow claim CRUD (`ClaimManager`), external device params resolver |
 | `pkg/store` | `DeviceStore` (in-memory device mappings), `StateStore` (BoltDB persistence) |
 | `pkg/config` | Config types, YAML loading, validation |
-| `pkg/webhook` | HTTP handler, pod mutator, claim builder |
+| `pkg/webhook` | HTTP handler, pod mutator, claim builder, template reconciler |
+| `pkg/metrics` | Prometheus metric definitions (composition-level gauges, histograms, counters) |
 
 ## Shadow Claims Pattern
 

@@ -27,7 +27,7 @@ webhook:
     repository: ghcr.io/openshift-psap/composite-dra-webhook
     tag: latest
     pullPolicy: Always
-  replicas: 2
+  replicas: 1
   port: 8443
   # DEPRECATED: use per-composition deviceClassName/extendedResourceName in compositions[] instead.
   # Kept for backward compatibility with single-composition configs.
