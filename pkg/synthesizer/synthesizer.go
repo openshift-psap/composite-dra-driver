@@ -104,10 +104,19 @@ func (s *Synthesizer) recompute() {
 		preparedByComp = s.preparedDevices()
 	}
 
+	// Compute capacity (no exclusion) for metrics
+	capacityDevices := s.pairer.ComputePairs(devicesBySource)
+	capacityByComp := make(map[string]int)
+	for _, cd := range capacityDevices {
+		capacityByComp[cd.Mapping.CompositionName]++
+	}
+	for _, comp := range s.cfg.Compositions {
+		metrics.SynthesisDevicesCapacity.WithLabelValues(comp.Name).Set(float64(capacityByComp[comp.Name]))
+	}
+
 	compositeDevices := s.pairer.ComputePairsWithExclusion(devicesBySource, preparedByComp)
 	klog.InfoS("synthesizer: computed composite devices", "count", len(compositeDevices), "sourceDevices", totalDevices)
 
-	// Update per-composition device count gauge
 	countByComposition := make(map[string]int)
 	for _, cd := range compositeDevices {
 		countByComposition[cd.Mapping.CompositionName]++

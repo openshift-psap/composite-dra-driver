@@ -15,7 +15,13 @@ var (
 	SynthesisDevicesTotal = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: namespace,
 		Name:      "synthesis_devices_total",
-		Help:      "Number of composite devices currently published per composition.",
+		Help:      "Number of composite devices currently published per composition (after cross-composition exclusion).",
+	}, []string{"composition"})
+
+	SynthesisDevicesCapacity = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: namespace,
+		Name:      "synthesis_devices_capacity",
+		Help:      "Maximum composite devices per composition if no cross-composition exclusion applied.",
 	}, []string{"composition"})
 
 	SynthesisDurationSeconds = promauto.NewHistogramVec(prometheus.HistogramOpts{
