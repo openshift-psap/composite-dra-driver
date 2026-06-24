@@ -1,0 +1,37 @@
+{{- if and .Values.metrics.enabled .Values.metrics.serviceMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "composite-dra.fullname" . }}-driver
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "composite-dra.labels" . | nindent 4 }}
+    app.kubernetes.io/component: driver
+spec:
+  selector:
+    matchLabels:
+      {{- include "composite-dra.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: driver
+  endpoints:
+    - port: metrics
+      interval: {{ .Values.metrics.serviceMonitor.interval }}
+---
+{{- if eq (include "composite-dra.webhookNeeded" .) "true" }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "composite-dra.fullname" . }}-webhook
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "composite-dra.labels" . | nindent 4 }}
+    app.kubernetes.io/component: webhook
+spec:
+  selector:
+    matchLabels:
+      {{- include "composite-dra.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: webhook
+  endpoints:
+    - port: metrics
+      interval: {{ .Values.metrics.serviceMonitor.interval }}
+{{- end }}
+{{- end }}

@@ -23,10 +23,11 @@ type ShadowRecord struct {
 }
 
 type ShadowEntry struct {
-	DriverName string `json:"driverName"`
-	Namespace  string `json:"namespace"`
-	Name       string `json:"name"`
-	UID        string `json:"uid"`
+	DriverName  string `json:"driverName"`
+	Namespace   string `json:"namespace"`
+	Name        string `json:"name"`
+	UID         string `json:"uid"`
+	Composition string `json:"composition,omitempty"`
 }
 
 // StateStore persists shadow claim mappings to BoltDB for crash recovery.
@@ -97,7 +98,7 @@ func (s *StateStore) ListAll() ([]ShadowRecord, error) {
 		return tx.Bucket(shadowBucket).ForEach(func(k, v []byte) error {
 			var rec ShadowRecord
 			if err := json.Unmarshal(v, &rec); err != nil {
-				klog.Warningf("state: skip corrupt record %s: %v", string(k), err)
+				klog.ErrorS(err, "state: skip corrupt record", "uid", string(k))
 				return nil
 			}
 			records = append(records, rec)

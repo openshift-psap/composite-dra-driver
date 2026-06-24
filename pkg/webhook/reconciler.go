@@ -11,6 +11,8 @@ import (
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	resourceclient "k8s.io/client-go/kubernetes/typed/resource/v1"
 	"k8s.io/klog/v2"
+
+	"github.com/openshift-psap/composite-dra-driver/pkg/metrics"
 )
 
 const (
@@ -24,7 +26,7 @@ func StartTemplateReconciler(ctx context.Context, resourceClient resourceclient.
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
-	klog.Infof("template-reconciler: started (interval=%s, grace=%s)", interval, gracePeriod)
+	klog.InfoS("template-reconciler: started", "interval", interval, "gracePeriod", gracePeriod)
 	for {
 		select {
 		case <-ctx.Done():
@@ -40,7 +42,7 @@ func reconcileTemplates(ctx context.Context, resourceClient resourceclient.Resou
 		LabelSelector: ManagedByLabel + "=" + ManagedByValue,
 	})
 	if err != nil {
-		klog.Warningf("template-reconciler: list templates: %v", err)
+		klog.ErrorS(err, "template-reconciler: list templates failed")
 		return
 	}
 
@@ -61,7 +63,7 @@ func reconcileTemplates(ctx context.Context, resourceClient resourceclient.Resou
 	for ns, indices := range byNamespace {
 		pods, err := coreClient.Pods(ns).List(ctx, metav1.ListOptions{})
 		if err != nil {
-			klog.Warningf("template-reconciler: list pods in %s: %v", ns, err)
+			klog.ErrorS(err, "template-reconciler: list pods failed", "namespace", ns)
 			continue
 		}
 
@@ -82,14 +84,12 @@ func reconcileTemplates(ctx context.Context, resourceClient resourceclient.Resou
 			}
 			age := now.Sub(t.CreationTimestamp.Time)
 			if age < gracePeriod {
-				klog.V(3).Infof("template-reconciler: %s/%s unreferenced but within grace period (%s old)",
-					ns, t.Name, age.Round(time.Second))
+				klog.V(3).InfoS("template-reconciler: unreferenced but within grace period", "namespace", ns, "name", t.Name, "age", age.Round(time.Second))
 				continue
 			}
-			klog.V(2).Infof("template-reconciler: deleting orphaned template %s/%s (age=%s)",
-				ns, t.Name, age.Round(time.Second))
+			klog.V(2).InfoS("template-reconciler: deleting orphaned template", "namespace", ns, "name", t.Name, "age", age.Round(time.Second))
 			if err := resourceClient.ResourceClaimTemplates(ns).Delete(ctx, t.Name, metav1.DeleteOptions{}); err != nil {
-				klog.Warningf("template-reconciler: delete %s/%s: %v", ns, t.Name, err)
+				klog.ErrorS(err, "template-reconciler: delete failed", "namespace", ns, "name", t.Name)
 			} else {
 				orphaned++
 			}
@@ -97,6 +97,7 @@ func reconcileTemplates(ctx context.Context, resourceClient resourceclient.Resou
 	}
 
 	if orphaned > 0 {
-		klog.Infof("template-reconciler: cleaned up %d orphaned templates", orphaned)
+		metrics.WebhookReconcilerTemplatesCleanedTotal.Add(float64(orphaned))
+		klog.InfoS("template-reconciler: cleaned up orphaned templates", "count", orphaned)
 	}
 }

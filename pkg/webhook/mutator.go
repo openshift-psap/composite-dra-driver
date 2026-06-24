@@ -17,6 +17,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	resourceclient "k8s.io/client-go/kubernetes/typed/resource/v1"
 	"k8s.io/klog/v2"
+
+	"github.com/openshift-psap/composite-dra-driver/pkg/metrics"
 )
 
 const (
@@ -51,11 +53,13 @@ type resourceMatch struct {
 // Returns nil if no mutation is needed.
 func (m *Mutator) Mutate(ctx context.Context, pod *corev1.Pod, namespace string) ([]PatchOp, error) {
 	if pod.Annotations[MutatedAnnotation] == "true" {
+		metrics.WebhookSkippedTotal.WithLabelValues("already_mutated").Inc()
 		return nil, nil
 	}
 
 	matches := m.findResourceRequests(pod)
 	if len(matches) == 0 {
+		metrics.WebhookSkippedTotal.WithLabelValues("no_resource_request").Inc()
 		return nil, nil
 	}
 
@@ -112,14 +116,14 @@ func (m *Mutator) Mutate(ctx context.Context, pod *corev1.Pod, namespace string)
 		_, err := m.client.ResourceClaimTemplates(namespace).Create(ctx, template, metav1.CreateOptions{})
 		if err != nil {
 			if errors.IsAlreadyExists(err) {
-				klog.V(2).Infof("webhook: claim template %s/%s already exists (idempotent)", namespace, templateName)
+				klog.V(2).InfoS("webhook: claim template already exists (idempotent)", "namespace", namespace, "template", templateName)
 			} else {
 				return nil, fmt.Errorf("create claim template %s: %w", templateName, err)
 			}
+		} else {
+			metrics.WebhookTemplatesCreatedTotal.WithLabelValues(cr.deviceClassName).Inc()
+			klog.InfoS("webhook: created ResourceClaimTemplate", "namespace", namespace, "template", templateName, "count", cr.totalCount, "deviceClass", cr.deviceClassName)
 		}
-
-		klog.Infof("webhook: created ResourceClaimTemplate %s/%s (%d devices, class=%s)",
-			namespace, templateName, cr.totalCount, cr.deviceClassName)
 
 		claims = append(claims, claimInfo{
 			templateName:    templateName,
@@ -131,6 +135,16 @@ func (m *Mutator) Mutate(ctx context.Context, pod *corev1.Pod, namespace string)
 	}
 
 	patches := m.buildPatches(pod, matches, claims)
+
+	seenCompositions := make(map[string]struct{}, len(claims))
+	for _, claim := range claims {
+		if _, seen := seenCompositions[claim.deviceClassName]; seen {
+			continue
+		}
+		seenCompositions[claim.deviceClassName] = struct{}{}
+		metrics.WebhookMutationsTotal.WithLabelValues(claim.deviceClassName).Inc()
+	}
+
 	return patches, nil
 }
 

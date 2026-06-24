@@ -14,11 +14,13 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/klog/v2"
 
+	_ "github.com/openshift-psap/composite-dra-driver/pkg/metrics"
 	"github.com/openshift-psap/composite-dra-driver/pkg/webhook"
 )
 
@@ -46,6 +48,7 @@ func main() {
 
 	var (
 		port               int
+		metricsPort        int
 		tlsCert            string
 		tlsKey             string
 		kubeconfig         string
@@ -58,6 +61,7 @@ func main() {
 	resourceMappings := make(stringMapFlag)
 
 	flag.IntVar(&port, "port", 8443, "webhook server port")
+	flag.IntVar(&metricsPort, "metrics-port", 8080, "port for Prometheus metrics endpoint")
 	flag.StringVar(&tlsCert, "tls-cert", "/etc/webhook/certs/tls.crt", "TLS certificate path")
 	flag.StringVar(&tlsKey, "tls-key", "/etc/webhook/certs/tls.key", "TLS key path")
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "path to kubeconfig (optional)")
@@ -125,8 +129,19 @@ func main() {
 
 	go webhook.StartTemplateReconciler(ctx, kubeClient.ResourceV1(), kubeClient.CoreV1(), reconcileInterval, reconcileGrace)
 
+	metricsAddr := fmt.Sprintf(":%d", metricsPort)
+	metricsMux := http.NewServeMux()
+	metricsMux.Handle("/metrics", promhttp.Handler())
+	metricsServer := &http.Server{Addr: metricsAddr, Handler: metricsMux}
 	go func() {
-		klog.Infof("webhook starting on :%d (mappings=%v)", port, resourceMappings)
+		klog.InfoS("metrics server listening", "addr", metricsAddr)
+		if err := metricsServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			klog.ErrorS(err, "metrics server failed")
+		}
+	}()
+
+	go func() {
+		klog.InfoS("webhook starting", "port", port, "mappings", resourceMappings)
 		if err := server.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
 			klog.Fatalf("server: %v", err)
 		}
@@ -137,6 +152,7 @@ func main() {
 
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer shutdownCancel()
+	metricsServer.Shutdown(shutdownCtx)
 	server.Shutdown(shutdownCtx)
 }
 

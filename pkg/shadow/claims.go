@@ -142,9 +142,7 @@ func (m *ClaimManager) Create(
 		return nil, fmt.Errorf("update shadow claim status %s: %w", shadowName, err)
 	}
 
-	klog.V(2).Infof("shadow: created %s/%s (uid=%s) for %s device %s/%s",
-		updated.Namespace, updated.Name, updated.UID,
-		member.Driver, member.Pool, member.Device)
+	klog.V(2).InfoS("shadow: created claim", "namespace", updated.Namespace, "name", updated.Name, "uid", updated.UID, "driver", member.Driver, "pool", member.Pool, "device", member.Device)
 
 	return &ShadowClaimInfo{
 		Namespace: updated.Namespace,
@@ -179,7 +177,7 @@ func (m *ClaimManager) Delete(ctx context.Context, namespace, name string) error
 	if err != nil {
 		return fmt.Errorf("delete shadow claim %s/%s: %w", namespace, name, err)
 	}
-	klog.V(2).Infof("shadow: deleted %s/%s", namespace, name)
+	klog.V(2).InfoS("shadow: deleted claim", "namespace", namespace, "name", name)
 	return nil
 }
 

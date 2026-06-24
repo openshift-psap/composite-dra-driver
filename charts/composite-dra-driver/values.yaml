@@ -27,7 +27,10 @@ webhook:
     repository: ghcr.io/openshift-psap/composite-dra-webhook
     tag: latest
     pullPolicy: Always
-  replicas: 2
+  # Single replica to avoid concurrent webhook pods creating ResourceClaimTemplates that reference
+  # overlapping devices from the same ResourceSlice pool. Acceptable SPOF: webhook is on the
+  # deprecation path (K8s 1.36+ doesn't need it via DRAExtendedResource).
+  replicas: 1
   port: 8443
   # DEPRECATED: use per-composition deviceClassName/extendedResourceName in compositions[] instead.
   # Kept for backward compatibility with single-composition configs.
@@ -162,6 +165,13 @@ compositions:
 
 # deviceParams:
 #   configMapPath: "/etc/composite-dra/device-params/params.yaml"
+
+metrics:
+  enabled: true
+  port: 8080
+  serviceMonitor:
+    enabled: false
+    interval: 30s
 
 openshift:
   scc:

@@ -224,7 +224,7 @@ Compositions are not limited to pairs. A 3-member composition (GPU + NIC + NVSwi
 | Cross-composition device exclusion | [#28](https://github.com/openshift-psap/composite-dra-driver/issues/28) | Medium | DRA has no cross-pool mutual exclusion | Pairer-side partitioning or continuous synthesizer recomputation ([upstream discussion](https://github.com/kubernetes-sigs/wg-device-management/issues/54)) |
 | VF support + external IPAM | [#34](https://github.com/openshift-psap/composite-dra-driver/issues/34) | Medium | VFs lack IP attributes at pairing time, need external IPAM | External IPAM controller integration |
 | Blast radius isolation | [#35](https://github.com/openshift-psap/composite-dra-driver/issues/35) | Medium | Single ConfigMap = single point of failure | Per-composition ConfigMaps or partial startup |
-| Observability | [#18](https://github.com/openshift-psap/composite-dra-driver/issues/18) | Medium | No metrics, no K8s events, no structured logging | Prometheus + K8s events |
+| ~~Observability~~ | ~~[#18](https://github.com/openshift-psap/composite-dra-driver/issues/18)~~ | ~~Medium~~ | ~~No metrics, no K8s events, no structured logging~~ | **Resolved** — Prometheus metrics, K8s Events, structured logging ([PR #39](https://github.com/openshift-psap/composite-dra-driver/pull/39)) |
 | Combined shadow claims | [#7](https://github.com/openshift-psap/composite-dra-driver/issues/7) | Low | kubeletplugin.Helper multi-driver claim handling unverified | Upstream investigation |
 | Attribute deduplication | [#4](https://github.com/openshift-psap/composite-dra-driver/issues/4) | Low | Redundant attributes across sources (32-attr limit matters) | Dedup rules in buildCompositeDevice |
 | Node-property templating | — | Low | Go templates only see device attrs + static values | Add node label injection to template context |
@@ -387,7 +387,8 @@ graph TD
 | `cmd/webhook` | `main()` | Webhook HTTP server with TLS. Starts template reconciler goroutine. |
 | `pkg/config` | `CompositeConfig`, `CompositionConfig`, `ExplicitPairConfig` | Config parsing, validation. Blocks multi-level composition (driver name ∉ sources). |
 | `pkg/synthesizer` | `Synthesizer`, `Watcher`, `Pairer`, `CELFilter`, `Publisher` | Watch source ResourceSlices, compute pairings, publish composite slices. |
-| `pkg/plugin` | `CompositePlugin`, `GRPCClient`, `Reconciler` | DRAPlugin implementation. Shadow claim orchestration, gRPC delegation, orphan cleanup. |
+| `pkg/plugin` | `CompositePlugin`, `GRPCClient`, `Reconciler` | DRAPlugin implementation. Shadow claim orchestration, gRPC delegation, orphan cleanup. K8s Events on ResourceClaims. |
+| `pkg/metrics` | Prometheus metric vars | Composition-level metrics for synthesis, prepare, shadow claims, gRPC, webhook. |
 | `pkg/shadow` | `ClaimManager`, `DeviceParamsResolver` | Shadow claim CRUD. Opaque params resolution via Go templates. |
 | `pkg/store` | `DeviceStore`, `StateStore` | In-memory composite→underlying mapping (RWMutex). BoltDB crash recovery. |
 | `pkg/webhook` | `Mutator`, `Handler`, `ClaimBuilder`, `TemplateReconciler` | Admission webhook. Pod mutation, claim template generation, template GC. |
@@ -403,6 +404,7 @@ graph TD
 | Plugin reconcile interval | 5 minutes | `pkg/plugin/reconciler.go` |
 | Webhook reconcile interval | 5 minutes (configurable via `--reconcile-interval`) | `cmd/webhook/main.go` |
 | Webhook reconcile grace period | 2 minutes (configurable via `--reconcile-grace-period`) | `cmd/webhook/main.go` |
+| Default metrics port | 8080 (configurable via `--metrics-port`) | `cmd/driver/main.go`, `cmd/webhook/main.go` |
 | Default plugin dir | `/var/lib/kubelet/plugins` | `cmd/driver/main.go` |
 | Default state dir | `/var/lib/composite-dra` | `cmd/driver/main.go` |
 | Default config path | `/etc/composite-dra/config.yaml` | `cmd/driver/main.go` |
@@ -476,7 +478,7 @@ deviceParams:                           # Optional: external opaque params for s
 ### 6.1 Topology
 
 - **Driver DaemonSet**: All nodes including control-plane. Priority `system-node-critical`. Tolerates `node-role.kubernetes.io/control-plane`, `not-ready`, `unreachable`. Rolling update with `maxUnavailable: 1`. Privileged container with hostPath mounts for kubelet plugins, kubelet registry, and BoltDB state.
-- **Webhook Deployment**: Single replica. Behind a Service (port 443 → 8443). TLS via cert-manager. Readiness probe on `/healthz`. Only deploys on K8s < 1.36 when `webhook.mode: auto`.
+- **Webhook Deployment**: 1 replica (configurable). Behind a Service (port 443 → 8443). TLS via cert-manager or Helm-generated. Readiness probe on `/healthz`. Metrics on port 8080. Only deploys on K8s < 1.36 when `webhook.mode: auto`.
 - **Namespace**: `composite-dra-system`
 - **OpenShift**: SCC manifest grants privileged access to the driver ServiceAccount.
 - **Helm chart**: `charts/composite-dra-driver/` with values files for different clusters.

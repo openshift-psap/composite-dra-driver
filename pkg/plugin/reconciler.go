@@ -10,6 +10,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	resourceclient "k8s.io/client-go/kubernetes/typed/resource/v1"
 	"k8s.io/klog/v2"
+
+	"github.com/openshift-psap/composite-dra-driver/pkg/metrics"
 )
 
 // StartReconciler periodically cleans up orphaned shadow claims whose
@@ -18,7 +20,7 @@ func StartReconciler(ctx context.Context, client resourceclient.ResourceV1Interf
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
-	klog.Infof("reconciler: started (interval=%s)", interval)
+	klog.InfoS("reconciler: started", "interval", interval)
 	for {
 		select {
 		case <-ctx.Done():
@@ -37,7 +39,7 @@ func reconcileOrphans(ctx context.Context, client resourceclient.ResourceV1Inter
 		LabelSelector: labelSelector,
 	})
 	if err != nil {
-		klog.Warningf("reconciler: list shadow claims: %v", err)
+		klog.ErrorS(err, "reconciler: list shadow claims failed")
 		return
 	}
 	_ = namespaces
@@ -61,10 +63,9 @@ func reconcileOrphans(ctx context.Context, client resourceclient.ResourceV1Inter
 		}
 
 		if !ownerExists {
-			klog.V(2).Infof("reconciler: deleting orphaned shadow claim %s/%s (composite %s gone)",
-				shadow.Namespace, shadow.Name, compositeUID)
+			klog.V(2).InfoS("reconciler: deleting orphaned shadow claim", "namespace", shadow.Namespace, "name", shadow.Name, "compositeUID", compositeUID)
 			if err := client.ResourceClaims(shadow.Namespace).Delete(ctx, shadow.Name, metav1.DeleteOptions{}); err != nil {
-				klog.Warningf("reconciler: delete %s/%s: %v", shadow.Namespace, shadow.Name, err)
+				klog.ErrorS(err, "reconciler: delete shadow claim failed", "namespace", shadow.Namespace, "name", shadow.Name)
 			} else {
 				orphaned++
 			}
@@ -72,6 +73,7 @@ func reconcileOrphans(ctx context.Context, client resourceclient.ResourceV1Inter
 	}
 
 	if orphaned > 0 {
-		klog.Infof("reconciler: cleaned up %d orphaned shadow claims", orphaned)
+		metrics.ReconcilerClaimsCleanedTotal.Add(float64(orphaned))
+		klog.InfoS("reconciler: cleaned up orphaned shadow claims", "count", orphaned)
 	}
 }

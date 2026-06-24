@@ -7,14 +7,18 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
+	corev1 "k8s.io/api/core/v1"
 	resourceapi "k8s.io/api/resource/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/dynamic-resource-allocation/kubeletplugin"
 	"k8s.io/klog/v2"
 
+	"github.com/openshift-psap/composite-dra-driver/pkg/metrics"
 	"github.com/openshift-psap/composite-dra-driver/pkg/shadow"
 	"github.com/openshift-psap/composite-dra-driver/pkg/store"
 )
@@ -27,15 +31,16 @@ type CompositePlugin struct {
 	paramsResolver  *shadow.DeviceParamsResolver
 	grpcClient      *GRPCClient
 	stateStore      *store.StateStore
+	recorder        record.EventRecorder
 
-	// tracks shadow claims created per composite claim for cleanup
 	mu           sync.Mutex
 	shadowClaims map[types.UID][]shadowRecord
 }
 
 type shadowRecord struct {
-	driverName string
-	info       *shadow.ShadowClaimInfo
+	driverName  string
+	composition string
+	info        *shadow.ShadowClaimInfo
 }
 
 var _ kubeletplugin.DRAPlugin = (*CompositePlugin)(nil)
@@ -47,6 +52,7 @@ func NewCompositePlugin(
 	paramsResolver *shadow.DeviceParamsResolver,
 	grpcClient *GRPCClient,
 	stateStore *store.StateStore,
+	recorder record.EventRecorder,
 ) *CompositePlugin {
 	p := &CompositePlugin{
 		driverName:     driverName,
@@ -55,6 +61,7 @@ func NewCompositePlugin(
 		paramsResolver: paramsResolver,
 		grpcClient:     grpcClient,
 		stateStore:     stateStore,
+		recorder:       recorder,
 		shadowClaims:   make(map[types.UID][]shadowRecord),
 	}
 
@@ -109,11 +116,15 @@ func (p *CompositePlugin) prepareClaim(
 	ctx context.Context,
 	claim *resourceapi.ResourceClaim,
 ) ([]kubeletplugin.Device, error) {
+	prepareStart := time.Now()
+
 	if claim.Status.Allocation == nil {
 		return nil, fmt.Errorf("claim %s/%s not allocated", claim.Namespace, claim.Name)
 	}
 
-	// Collect all work items upfront
+	p.recorder.Eventf(claim, corev1.EventTypeNormal, "PrepareStarted", "Preparing composite resource claim")
+
+	var composition string
 	var work []*memberWork
 	pairOrdinal := 0
 
@@ -126,11 +137,17 @@ func (p *CompositePlugin) prepareClaim(
 		if mapping == nil {
 			return nil, fmt.Errorf("unknown composite device %s/%s", allocResult.Pool, allocResult.Device)
 		}
+		if composition == "" {
+			composition = mapping.CompositionName
+		}
 
 		for memberIdx, member := range mapping.Members {
 			var opaqueConfig []byte
 			if p.paramsResolver != nil {
 				opaqueConfig = p.paramsResolver.ResolveForDevice(member.SourceName, member.Attributes, pairOrdinal)
+				if opaqueConfig == nil {
+					metrics.DeviceParamsErrorsTotal.WithLabelValues(composition).Inc()
+				}
 			}
 			work = append(work, &memberWork{
 				pairIdx:      pairOrdinal,
@@ -144,6 +161,7 @@ func (p *CompositePlugin) prepareClaim(
 	}
 
 	// Phase 1: Create all shadow claims in parallel
+	shadowStart := time.Now()
 	var wg sync.WaitGroup
 	for _, w := range work {
 		wg.Add(1)
@@ -152,7 +170,7 @@ func (p *CompositePlugin) prepareClaim(
 			shadowInfo, err := p.claimMgr.Create(ctx, claim, &w.member, w.allocResult.Request, w.opaqueConfig)
 			if err != nil {
 				if errors.IsAlreadyExists(err) {
-					klog.V(2).Infof("plugin: shadow claim already exists for %s/%s (idempotent), fetching existing", w.member.Driver, w.member.Device)
+					klog.V(2).InfoS("plugin: shadow claim already exists, fetching existing", "driver", w.member.Driver, "device", w.member.Device)
 					shadowInfo, err = p.claimMgr.Get(ctx, claim, &w.member)
 					if err != nil {
 						w.err = fmt.Errorf("get existing shadow for %s/%s: %w", w.member.Driver, w.member.Device, err)
@@ -163,28 +181,39 @@ func (p *CompositePlugin) prepareClaim(
 					return
 				}
 			}
-			w.shadow = shadowRecord{driverName: w.member.Driver, info: shadowInfo}
+			w.shadow = shadowRecord{driverName: w.member.Driver, composition: composition, info: shadowInfo}
 		}(w)
 	}
 	wg.Wait()
 
-	// Check for creation errors
+	metrics.PrepareShadowCreateDurationSeconds.WithLabelValues(composition).Observe(time.Since(shadowStart).Seconds())
+
 	var shadows []shadowRecord
+	var firstErr error
 	for _, w := range work {
-		if w.err != nil {
-			p.cleanupShadows(ctx, shadows)
-			return nil, w.err
+		if w.shadow.info != nil {
+			shadows = append(shadows, w.shadow)
 		}
-		shadows = append(shadows, w.shadow)
+		if w.err != nil && firstErr == nil {
+			firstErr = w.err
+			p.recorder.Eventf(claim, corev1.EventTypeWarning, "PrepareFailed",
+				"Shadow claim creation failed for %s/%s: %v", w.member.Driver, w.member.Device, w.err)
+		}
+	}
+	if firstErr != nil {
+		p.cleanupShadows(ctx, shadows)
+		return nil, firstErr
 	}
 
 	// Phase 2: Call gRPC prepare on all underlying drivers in parallel
+	grpcStart := time.Now()
 	for _, w := range work {
 		wg.Add(1)
 		go func(w *memberWork) {
 			defer wg.Done()
 			resp, err := p.grpcClient.Prepare(ctx, w.shadow.driverName, w.shadow.info)
 			if err != nil {
+				metrics.GRPCErrorsTotal.WithLabelValues(composition, w.shadow.driverName).Inc()
 				w.err = fmt.Errorf("prepare %s via gRPC: %w", w.shadow.driverName, err)
 				return
 			}
@@ -195,9 +224,12 @@ func (p *CompositePlugin) prepareClaim(
 	}
 	wg.Wait()
 
-	// Check for prepare errors
+	metrics.PrepareGRPCDurationSeconds.WithLabelValues(composition).Observe(time.Since(grpcStart).Seconds())
+
 	for _, w := range work {
 		if w.err != nil {
+			p.recorder.Eventf(claim, corev1.EventTypeWarning, "PrepareFailed",
+				"gRPC prepare failed for driver %s: %v", w.shadow.driverName, w.err)
 			p.cleanupShadows(ctx, shadows)
 			return nil, w.err
 		}
@@ -232,8 +264,15 @@ func (p *CompositePlugin) prepareClaim(
 
 	p.persistShadows(claim, shadows)
 
-	klog.Infof("plugin: prepared claim %s/%s — %d composite devices, %d shadow claims",
-		claim.Namespace, claim.Name, len(allDevices), len(shadows))
+	elapsed := time.Since(prepareStart)
+	metrics.PrepareDurationSeconds.WithLabelValues(composition).Observe(elapsed.Seconds())
+	metrics.ClaimsActive.WithLabelValues(composition).Inc()
+	metrics.ShadowClaimsActive.WithLabelValues(composition).Add(float64(len(shadows)))
+
+	p.recorder.Eventf(claim, corev1.EventTypeNormal, "PrepareCompleted",
+		"Prepared %d composite devices with %d shadow claims in %s", len(allDevices), len(shadows), elapsed.Round(time.Millisecond))
+
+	klog.InfoS("plugin: prepared claim", "namespace", claim.Namespace, "claim", claim.Name, "compositeDevices", len(allDevices), "shadowClaims", len(shadows))
 
 	return allDevices, nil
 }
@@ -248,20 +287,21 @@ func (p *CompositePlugin) unprepareClaim(
 	p.mu.Unlock()
 
 	var errs []error
+	shadowCount := len(shadows)
 	for _, sr := range shadows {
 		if err := p.grpcClient.Unprepare(ctx, sr.driverName, sr.info); err != nil {
-			klog.Warningf("plugin: unprepare %s for shadow %s: %v", sr.driverName, sr.info.Name, err)
+			klog.ErrorS(err, "plugin: unprepare shadow failed", "driver", sr.driverName, "shadow", sr.info.Name)
 			errs = append(errs, err)
 		}
 		if err := p.claimMgr.Delete(ctx, sr.info.Namespace, sr.info.Name); err != nil {
-			klog.Warningf("plugin: delete shadow claim %s: %v", sr.info.Name, err)
+			klog.ErrorS(err, "plugin: delete shadow claim failed", "shadow", sr.info.Name)
 			errs = append(errs, err)
 		}
 	}
 
 	if len(shadows) == 0 {
 		if err := p.claimMgr.DeleteForCompositeClaim(ctx, claim.Namespace, string(claim.UID)); err != nil {
-			klog.Warningf("plugin: cleanup orphaned shadows for %s: %v", claim.UID, err)
+			klog.ErrorS(err, "plugin: cleanup orphaned shadows failed", "uid", claim.UID)
 		}
 	}
 
@@ -271,8 +311,22 @@ func (p *CompositePlugin) unprepareClaim(
 		return fmt.Errorf("%d errors during unprepare: %v", len(errs), errs)
 	}
 
-	klog.Infof("plugin: unprepared claim %s/%s — cleaned up %d shadow claims",
-		claim.Namespace, claim.Name, len(shadows))
+	if shadowCount > 0 {
+		metrics.ClaimsActive.WithLabelValues(shadows[0].composition).Dec()
+		metrics.ShadowClaimsActive.WithLabelValues(shadows[0].composition).Sub(float64(shadowCount))
+	}
+
+	claimRef := &corev1.ObjectReference{
+		APIVersion: "resource.k8s.io/v1",
+		Kind:       "ResourceClaim",
+		Namespace:  claim.Namespace,
+		Name:       claim.Name,
+		UID:        claim.UID,
+	}
+	p.recorder.Eventf(claimRef, corev1.EventTypeNormal, "UnprepareCompleted",
+		"Cleaned up %d shadow claims", shadowCount)
+
+	klog.InfoS("plugin: unprepared claim", "namespace", claim.Namespace, "claim", claim.Name, "shadowClaims", shadowCount)
 	return nil
 }
 
@@ -290,10 +344,11 @@ func (p *CompositePlugin) persistShadows(claim *resourceapi.ResourceClaim, shado
 	entries := make([]store.ShadowEntry, len(shadows))
 	for i, sr := range shadows {
 		entries[i] = store.ShadowEntry{
-			DriverName: sr.driverName,
-			Namespace:  sr.info.Namespace,
-			Name:       sr.info.Name,
-			UID:        sr.info.UID,
+			DriverName:  sr.driverName,
+			Namespace:   sr.info.Namespace,
+			Name:        sr.info.Name,
+			UID:         sr.info.UID,
+			Composition: sr.composition,
 		}
 	}
 	if err := p.stateStore.SaveShadows(store.ShadowRecord{
@@ -301,7 +356,7 @@ func (p *CompositePlugin) persistShadows(claim *resourceapi.ResourceClaim, shado
 		Namespace:         claim.Namespace,
 		Shadows:           entries,
 	}); err != nil {
-		klog.Warningf("plugin: persist shadow state for %s: %v", claim.UID, err)
+		klog.ErrorS(err, "plugin: persist shadow state failed", "uid", claim.UID)
 	}
 }
 
@@ -310,14 +365,14 @@ func (p *CompositePlugin) deleteShadowState(compositeClaimUID string) {
 		return
 	}
 	if err := p.stateStore.DeleteShadows(compositeClaimUID); err != nil {
-		klog.Warningf("plugin: delete shadow state for %s: %v", compositeClaimUID, err)
+		klog.ErrorS(err, "plugin: delete shadow state failed", "uid", compositeClaimUID)
 	}
 }
 
 func (p *CompositePlugin) restoreFromState() {
 	records, err := p.stateStore.ListAll()
 	if err != nil {
-		klog.Warningf("plugin: restore state: %v", err)
+		klog.ErrorS(err, "plugin: restore state failed")
 		return
 	}
 	p.mu.Lock()
@@ -327,7 +382,8 @@ func (p *CompositePlugin) restoreFromState() {
 		var shadows []shadowRecord
 		for _, entry := range rec.Shadows {
 			shadows = append(shadows, shadowRecord{
-				driverName: entry.DriverName,
+				driverName:  entry.DriverName,
+				composition: entry.Composition,
 				info: &shadow.ShadowClaimInfo{
 					Namespace: entry.Namespace,
 					Name:      entry.Name,
@@ -337,5 +393,5 @@ func (p *CompositePlugin) restoreFromState() {
 		}
 		p.shadowClaims[uid] = shadows
 	}
-	klog.Infof("plugin: restored %d shadow claim records from state", len(records))
+	klog.InfoS("plugin: restored shadow claim records from state", "count", len(records))
 }

@@ -35,7 +35,7 @@ func (p *HelperPublisher) Publish(driverName, nodeName string, compositeDevices 
 		poolName := PoolName(driverName, nodeName, compName)
 		slices := buildSlices(devices)
 		pools[poolName] = resourceslice.Pool{Slices: slices}
-		klog.Infof("publisher: pool %s: %d devices in %d slice(s)", poolName, len(devices), len(slices))
+		klog.InfoS("publisher: pool published", "pool", poolName, "count", len(devices), "slices", len(slices))
 	}
 
 	if len(pools) == 0 {
@@ -90,7 +90,7 @@ type LogPublisher struct{}
 func (p *LogPublisher) Publish(driverName, nodeName string, compositeDevices []CompositeDevice) error {
 	groups := groupByComposition(compositeDevices)
 	for compName, devices := range groups {
-		klog.Infof("publisher(log): %d devices for pool %s", len(devices), PoolName(driverName, nodeName, compName))
+		klog.InfoS("publisher(log): devices for pool", "count", len(devices), "pool", PoolName(driverName, nodeName, compName))
 	}
 	return nil
 }

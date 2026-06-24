@@ -152,6 +152,21 @@ deviceParams:
 
 Opaque driver params (routes, gateways, MTU, etc.) are provided via an external ConfigMap — the composite driver never interprets their content. See [examples/](charts/composite-dra-driver/examples/) for ConfigMap templates and [values.yaml](charts/composite-dra-driver/values.yaml) for all options.
 
+## Observability
+
+Both binaries serve Prometheus metrics on `/metrics` (port 8080, configurable). Key metrics:
+
+| Metric | What it tells you |
+|--------|-------------------|
+| `composite_dra_synthesis_devices_total` | Composite devices published per composition per node |
+| `composite_dra_claims_active` | Composite claims currently prepared (allocated) |
+| `composite_dra_prepare_duration_seconds` | End-to-end Prepare latency (pod startup contribution) |
+| `composite_dra_webhook_errors_total` | Webhook mutation failures by stage |
+
+Kubernetes Events (`PrepareStarted`, `PrepareCompleted`, `PrepareFailed`, `UnprepareCompleted`) are emitted on ResourceClaims. All logging uses structured `klog.InfoS`/`ErrorS` with key-value pairs.
+
+Enable Prometheus scraping: `--set metrics.serviceMonitor.enabled=true` in Helm values. See [Observability reference](docs/OBSERVABILITY.md) for the full metrics table, PromQL examples, scraping setup (OpenShift + vanilla K8s), and limitations.
+
 ## Requirements
 
 - Kubernetes 1.34+ with DRA enabled
@@ -167,10 +182,6 @@ Opaque driver params (routes, gateways, MTU, etc.) are provided via an external 
 
 - **VF support requires external IPAM** — PF mode works with the external device params ConfigMap. VF mode needs an external controller to allocate IPs and populate the ConfigMap (VFs lack `dra.net/ipv4`). ([#34](https://github.com/openshift-psap/composite-dra-driver/issues/34))
 
-- **Stale ResourceClaimTemplates** — webhook creates templates but doesn't clean them up on pod deletion. Templates accumulate until manually deleted. Reconciler planned. ([#17](https://github.com/openshift-psap/composite-dra-driver/issues/17))
-
-- **No metrics or events** — operational visibility is klog only. No Prometheus metrics, no Kubernetes Events on claims. ([#18](https://github.com/openshift-psap/composite-dra-driver/issues/18))
-
 - **Webhook required on K8s < 1.36** — the `DRAExtendedResource` feature gate is beta (on by default) in K8s 1.36, eliminating the need for the webhook. On K8s 1.35, the gate exists as alpha and can be manually enabled — see [Method 3 in the cheatsheet](docs/CHEATSHEET.md#method-3-extended-resource-k8s-135-with-draextendedresource-gate) and the [FAQ entry on dropping the webhook](docs/FAQ.md#when-can-we-drop-the-webhook-entirely). On K8s 1.34, the webhook is the only option for the resource request UX.
 
 - **Extended resources require limits == requests** — Kubernetes requires this for all extended resources. Affects StatefulSet/LWS pod templates. Not a bug — K8s API constraint.
@@ -178,6 +189,7 @@ Opaque driver params (routes, gateways, MTU, etc.) are provided via an external 
 ## Documentation
 
 - [Cheatsheet](docs/CHEATSHEET.md) — install, request methods, verify, troubleshoot
+- [Observability](docs/OBSERVABILITY.md) — metrics reference, scraping setup, events, structured logging
 - [FAQ](docs/FAQ.md) — architecture decisions, scheduling, networking, performance
 - [HA Design](docs/HA-DESIGN.md) — failure scenarios, DaemonSet vs Deployment HA
 - [Status](docs/STATUS.md) — implementation status and validation evidence

@@ -9,6 +9,13 @@ helm install composite charts/composite-dra-driver \
   --create-namespace \
   -f charts/composite-dra-driver/values-poseidon.yaml
 
+# With Prometheus ServiceMonitor (requires Prometheus Operator or OpenShift user workload monitoring)
+helm install composite charts/composite-dra-driver \
+  -n composite-dra-system \
+  --create-namespace \
+  -f charts/composite-dra-driver/values-poseidon.yaml \
+  --set metrics.serviceMonitor.enabled=true
+
 # Driver + webhook explicitly enabled
 helm install composite charts/composite-dra-driver \
   -n composite-dra-system \
@@ -16,12 +23,17 @@ helm install composite charts/composite-dra-driver \
   -f charts/composite-dra-driver/values-poseidon.yaml \
   --set webhook.mode=enabled
 
-# Upgrade (e.g., enable webhook later)
+# Upgrade (e.g., enable metrics scraping later)
 helm upgrade composite charts/composite-dra-driver \
   -n composite-dra-system \
   -f charts/composite-dra-driver/values-poseidon.yaml \
-  --set webhook.mode=enabled
+  --set metrics.serviceMonitor.enabled=true
 ```
+
+**Prerequisites for metrics scraping:**
+- **OpenShift:** user workload monitoring must be enabled (`enableUserWorkload: true` in `cluster-monitoring-config` ConfigMap in `openshift-monitoring` namespace)
+- **Vanilla K8s:** [kube-prometheus-stack](https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack) or equivalent providing the ServiceMonitor CRD
+- **RBAC:** Events permissions (create/patch) are included in the Helm chart ClusterRole automatically — no additional setup needed
 
 ## Request GPU-NIC Pairs
 
@@ -159,6 +171,29 @@ Key settings:
 ## Known Limitations
 
 **Device sharing conflict across compositions (#28):** When multiple compositions share a source (e.g. GPU appears in both `gpu` and `gpu-nic-pair`), the scheduler can allocate the same physical device to both compositions on the same node. The underlying driver rejects the second allocation. This happens because each composition publishes an independent pool — the scheduler has no cross-pool mutual exclusion. Safe to use when pods land on different nodes or only one composition is actively used at a time. Fix requires pairer-side device partitioning.
+
+## Observability
+
+```bash
+# Check metrics (port-forward to any driver/webhook pod)
+oc port-forward -n composite-dra-system <driver-pod> 8080:8080
+curl -s localhost:8080/metrics | grep composite_dra
+
+# Key metrics
+curl -s localhost:8080/metrics | grep composite_dra_synthesis_devices_total    # devices published
+curl -s localhost:8080/metrics | grep composite_dra_claims_active              # claims prepared
+curl -s localhost:8080/metrics | grep composite_dra_shadow_claims_active       # shadow claims
+
+# K8s Events on ResourceClaims
+oc describe resourceclaim <name> -n <namespace>    # shows PrepareStarted/Completed/Failed
+oc get events --field-selector reason=PrepareCompleted
+
+# OpenShift: metrics in console
+# Observe > Metrics > composite_dra_synthesis_devices_total
+
+# Enable ServiceMonitor scraping
+helm upgrade composite ... --set metrics.serviceMonitor.enabled=true
+```
 
 ## Troubleshooting
 

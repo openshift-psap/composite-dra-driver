@@ -1,5 +1,6 @@
 # Binaries
-composite-dra-driver
+/composite-dra-driver
+/composite-dra-webhook
 *.exe
 *.dll
 *.so

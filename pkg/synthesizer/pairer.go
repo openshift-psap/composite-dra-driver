@@ -47,7 +47,7 @@ func NewPairer(sources []config.SourceConfig, compositions []config.CompositionC
 	}
 	celFilter, err := NewCELFilter()
 	if err != nil {
-		klog.Errorf("pairer: CEL filter init failed, filters disabled: %v", err)
+		klog.ErrorS(err, "pairer: CEL filter init failed, filters disabled")
 	}
 	return &Pairer{
 		sources:      srcMap,
@@ -155,7 +155,7 @@ func (p *Pairer) pairWithoutConstraints(comp config.CompositionConfig, devicesBy
 
 func (p *Pairer) pairWithExplicit(comp config.CompositionConfig, devicesBySource map[string][]SourceDevice) []CompositeDevice {
 	if p.celFilter == nil {
-		klog.Errorf("pairer: explicit pairing requires CEL filter but it is nil")
+		klog.ErrorS(nil, "pairer: explicit pairing requires CEL filter but it is nil")
 		return nil
 	}
 
@@ -168,7 +168,7 @@ func (p *Pairer) pairWithExplicit(comp config.CompositionConfig, devicesBySource
 		}
 	}
 	if pool == nil {
-		klog.V(2).Infof("pairer: explicit mode: no pool matches node label %s=%q", comp.NodePoolLabelKey, nodePoolValue)
+		klog.V(2).InfoS("pairer: explicit mode: no pool matches node label", "label", comp.NodePoolLabelKey, "value", nodePoolValue)
 		return nil
 	}
 
@@ -185,7 +185,7 @@ func (p *Pairer) pairWithExplicit(comp config.CompositionConfig, devicesBySource
 		for _, member := range comp.Members {
 			sel, ok := ep.Selectors[member.Source]
 			if !ok {
-				klog.Warningf("pairer: explicit pair %d missing selector for source %q", i, member.Source)
+				klog.ErrorS(nil, "pairer: explicit pair missing selector", "pair", i, "source", member.Source)
 				valid = false
 				break
 			}
@@ -201,14 +201,12 @@ func (p *Pairer) pairWithExplicit(comp config.CompositionConfig, devicesBySource
 			}
 
 			if len(matched) < member.Count {
-				klog.V(2).Infof("pairer: explicit pair %d: source %q matched %d devices, need %d",
-					i, member.Source, len(matched), member.Count)
+				klog.V(2).InfoS("pairer: explicit pair insufficient matches", "pair", i, "source", member.Source, "matched", len(matched), "needed", member.Count)
 				valid = false
 				break
 			}
 			if len(matched) > member.Count {
-				klog.Warningf("pairer: explicit pair %d: source %q selector matched %d devices (need %d), using first %d — use a more specific selector for deterministic pairing",
-					i, member.Source, len(matched), member.Count, member.Count)
+				klog.ErrorS(nil, "pairer: explicit pair selector matched too many devices, using first N — use a more specific selector for deterministic pairing", "pair", i, "source", member.Source, "matched", len(matched), "needed", member.Count)
 			}
 
 			combo[member.Source] = matched[:member.Count]
@@ -239,7 +237,7 @@ func (p *Pairer) pairWithExplicit(comp config.CompositionConfig, devicesBySource
 		return result[i].Name < result[j].Name
 	})
 
-	klog.Infof("pairer: explicit mode produced %d/%d pairs for pool %q", len(result), len(pool.Pairs), pool.Label)
+	klog.InfoS("pairer: explicit mode produced pairs", "count", len(result), "total", len(pool.Pairs), "pool", pool.Label)
 	return result
 }
 
@@ -436,6 +434,6 @@ func (p *Pairer) applyFilter(devices []SourceDevice, f config.FilterConfig) []So
 			filtered = append(filtered, dev)
 		}
 	}
-	klog.V(2).Infof("pairer: CEL filter %q: %d/%d devices passed", f.CEL, len(filtered), len(devices))
+	klog.V(2).InfoS("pairer: CEL filter applied", "expression", f.CEL, "passed", len(filtered), "total", len(devices))
 	return filtered
 }

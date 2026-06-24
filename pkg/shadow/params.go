@@ -142,7 +142,7 @@ func (r *DeviceParamsResolver) ResolveForDevice(
 
 	tmpl, err := src.paramsTemplate.Clone()
 	if err != nil {
-		klog.Errorf("params: clone template for source %q: %v", sourceName, err)
+		klog.ErrorS(err, "params: clone template failed", "source", sourceName)
 		return nil
 	}
 	tmpl.Funcs(template.FuncMap{
@@ -154,7 +154,7 @@ func (r *DeviceParamsResolver) ResolveForDevice(
 
 	var buf bytes.Buffer
 	if err := tmpl.Execute(&buf, td); err != nil {
-		klog.Errorf("params: execute template for source %q: %v", sourceName, err)
+		klog.ErrorS(err, "params: execute template failed", "source", sourceName)
 		return nil
 	}
 
@@ -253,7 +253,7 @@ func buildTemplateData(values map[string]interface{}, pairOrdinal int, nodeName,
 func networkCIDR(ipCIDR string) string {
 	_, ipNet, err := net.ParseCIDR(ipCIDR)
 	if err != nil {
-		klog.V(2).Infof("params: networkCIDR(%q): %v", ipCIDR, err)
+		klog.V(2).InfoS("params: networkCIDR parse failed", "expression", ipCIDR, "err", err)
 		return ipCIDR
 	}
 	return ipNet.String()
