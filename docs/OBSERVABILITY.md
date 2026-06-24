@@ -12,7 +12,7 @@ All labeled by `composition` unless noted otherwise.
 
 | Metric | Type | Labels | Description |
 |--------|------|--------|-------------|
-| `composite_dra_synthesis_devices_total` | Gauge | `composition` | Composite devices currently published |
+| `composite_dra_synthesis_devices_available` | Gauge | `composition` | Composite devices available for allocation (after cross-composition exclusion) |
 | `composite_dra_synthesis_duration_seconds` | Histogram | `composition` | Synthesis pipeline duration |
 | `composite_dra_claims_active` | Gauge | `composition` | Composite claims currently prepared |
 | `composite_dra_shadow_claims_active` | Gauge | `composition` | Shadow claims active (N per composite claim, one per device member) |
@@ -38,11 +38,11 @@ All labeled by `composition` unless noted otherwise.
 
 ```promql
 # Devices available per composition (cluster-wide)
-sum by (composition) (composite_dra_synthesis_devices_total)
+sum by (composition) (composite_dra_synthesis_devices_available)
 
 # Device utilization ratio
 sum by (composition) (composite_dra_claims_active)
-  / sum by (composition) (composite_dra_synthesis_devices_total > 0)
+  / sum by (composition) (composite_dra_synthesis_devices_available > 0)
 
 # Average shadow claims per composite claim
 sum(composite_dra_shadow_claims_active) / sum(composite_dra_claims_active)
@@ -83,7 +83,7 @@ rate(composite_dra_webhook_mutations_total[5m])
      --set metrics.serviceMonitor.enabled=true
    ```
 
-3. **View in OpenShift console**: Observe > Metrics > `composite_dra_synthesis_devices_total`
+3. **View in OpenShift console**: Observe > Metrics > `composite_dra_synthesis_devices_available`
 
 ### Vanilla Kubernetes
 
@@ -158,7 +158,7 @@ Enable JSON output for log aggregation (fluentd, vector, Loki):
 
 ## Limitations
 
-- Gauge metrics (`claims_active`, `shadow_claims_active`, `synthesis_devices_total`) reset to zero on pod restart. Prometheus handles counter resets via `resets()`; for gauges, expect a brief dip after driver pod restarts.
+- Gauge metrics (`claims_active`, `shadow_claims_active`, `synthesis_devices_available`) reset to zero on pod restart. Prometheus handles counter resets via `resets()`; for gauges, expect a brief dip after driver pod restarts.
 - Metrics port (8080) is plaintext HTTP. If your security policy requires TLS on all ports, use a sidecar proxy (e.g., kube-rbac-proxy).
 - `synthesis_duration_seconds` records the full pairer+publisher pipeline time. When multiple compositions exist, each gets the same duration value (single `recompute()` call processes all compositions).
 - Event emission requires the driver ServiceAccount to have `events` create/patch permissions in the claim's namespace. The Helm chart ClusterRole includes this by default.

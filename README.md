@@ -158,7 +158,7 @@ Both binaries serve Prometheus metrics on `/metrics` (port 8080, configurable). 
 
 | Metric | What it tells you |
 |--------|-------------------|
-| `composite_dra_synthesis_devices_total` | Composite devices published per composition per node |
+| `composite_dra_synthesis_devices_available` | Composite devices available for allocation per composition (after exclusion) |
 | `composite_dra_claims_active` | Composite claims currently prepared (allocated) |
 | `composite_dra_prepare_duration_seconds` | End-to-end Prepare latency (pod startup contribution) |
 | `composite_dra_webhook_errors_total` | Webhook mutation failures by stage |

@@ -122,7 +122,7 @@ func (s *Synthesizer) recompute() {
 		countByComposition[cd.Mapping.CompositionName]++
 	}
 	for _, comp := range s.cfg.Compositions {
-		metrics.SynthesisDevicesTotal.WithLabelValues(comp.Name).Set(float64(countByComposition[comp.Name]))
+		metrics.SynthesisDevicesAvailable.WithLabelValues(comp.Name).Set(float64(countByComposition[comp.Name]))
 	}
 
 	newMappings := make(map[string]*store.DeviceMapping, len(compositeDevices))

@@ -12,10 +12,10 @@ const namespace = "composite_dra"
 
 // Driver: synthesis pipeline
 var (
-	SynthesisDevicesTotal = promauto.NewGaugeVec(prometheus.GaugeOpts{
+	SynthesisDevicesAvailable = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: namespace,
-		Name:      "synthesis_devices_total",
-		Help:      "Number of composite devices currently published per composition (after cross-composition exclusion).",
+		Name:      "synthesis_devices_available",
+		Help:      "Composite devices currently available for allocation per composition (after cross-composition exclusion).",
 	}, []string{"composition"})
 
 	SynthesisDevicesCapacity = promauto.NewGaugeVec(prometheus.GaugeOpts{
