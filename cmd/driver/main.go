@@ -150,6 +150,19 @@ func main() {
 	})
 
 	synth := synthesizer.New(cfg, nodeName, kubeClient, deviceStore, publisher)
+
+	synth.SetPreparedDevicesFunc(func() map[string][]struct{ SourceName, Device string } {
+		raw := compositePlugin.PreparedDevicesByComposition()
+		result := make(map[string][]struct{ SourceName, Device string }, len(raw))
+		for comp, devs := range raw {
+			for _, d := range devs {
+				result[comp] = append(result[comp], struct{ SourceName, Device string }{d.SourceName, d.Device})
+			}
+		}
+		return result
+	})
+	compositePlugin.SetOnStateChange(synth.Recompute)
+
 	go func() {
 		if err := synth.Start(ctx); err != nil {
 			klog.Fatalf("synthesizer: %v", err)

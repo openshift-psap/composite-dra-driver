@@ -117,6 +117,7 @@ sources:
 
 compositions:
   - name: "gpu-nic-pair"
+    priority: 10
     # deviceClassName: "composite-gpu-nic-pair"        # optional, defaults to "composite-<name>"
     # extendedResourceName: ""                          # optional, defaults to "<driver.name>/<name>"
     members:
@@ -155,6 +156,7 @@ compositions:
     #         rail: 0
     #         numa: 0
   - name: "gpu"
+    priority: 1
     members:
       - source: gpu
         count: 1

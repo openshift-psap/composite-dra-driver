@@ -59,12 +59,59 @@ func NewPairer(sources []config.SourceConfig, compositions []config.CompositionC
 
 // ComputePairs takes all source devices on a node and returns valid composite devices.
 func (p *Pairer) ComputePairs(devicesBySource map[string][]SourceDevice) []CompositeDevice {
+	return p.ComputePairsWithExclusion(devicesBySource, nil)
+}
+
+// ComputePairsWithExclusion computes composite devices, excluding underlying
+// devices that are prepared by other compositions. For each composition, devices
+// prepared by OTHER compositions are filtered out before pairing.
+func (p *Pairer) ComputePairsWithExclusion(devicesBySource map[string][]SourceDevice, preparedByComp map[string][]struct{ SourceName, Device string }) []CompositeDevice {
 	var result []CompositeDevice
 	for _, comp := range p.compositions {
-		pairs := p.computeForComposition(comp, devicesBySource)
+		available := devicesBySource
+		if preparedByComp != nil {
+			available = p.excludePreparedByOthers(devicesBySource, preparedByComp, comp.Name)
+		}
+		pairs := p.computeForComposition(comp, available)
 		result = append(result, pairs...)
 	}
 	return result
+}
+
+// excludePreparedByOthers returns a filtered copy of devicesBySource that
+// removes devices prepared by compositions other than currentComp.
+func (p *Pairer) excludePreparedByOthers(devicesBySource map[string][]SourceDevice, preparedByComp map[string][]struct{ SourceName, Device string }, currentComp string) map[string][]SourceDevice {
+	excluded := make(map[string]map[string]bool)
+	for compName, devs := range preparedByComp {
+		if compName == currentComp {
+			continue
+		}
+		for _, d := range devs {
+			if excluded[d.SourceName] == nil {
+				excluded[d.SourceName] = make(map[string]bool)
+			}
+			excluded[d.SourceName][d.Device] = true
+		}
+	}
+
+	if len(excluded) == 0 {
+		return devicesBySource
+	}
+
+	filtered := make(map[string][]SourceDevice, len(devicesBySource))
+	for source, devices := range devicesBySource {
+		excl := excluded[source]
+		if excl == nil {
+			filtered[source] = devices
+			continue
+		}
+		for _, dev := range devices {
+			if !excl[dev.DeviceName] {
+				filtered[source] = append(filtered[source], dev)
+			}
+		}
+	}
+	return filtered
 }
 
 func (p *Pairer) computeForComposition(comp config.CompositionConfig, devicesBySource map[string][]SourceDevice) []CompositeDevice {

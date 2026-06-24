@@ -23,6 +23,12 @@ import (
 	"github.com/openshift-psap/composite-dra-driver/pkg/store"
 )
 
+// PreparedDevice identifies an underlying device currently prepared by the composite driver.
+type PreparedDevice struct {
+	SourceName string
+	Device     string
+}
+
 // CompositePlugin implements kubeletplugin.DRAPlugin for the composite driver.
 type CompositePlugin struct {
 	driverName      string
@@ -32,9 +38,12 @@ type CompositePlugin struct {
 	grpcClient      *GRPCClient
 	stateStore      *store.StateStore
 	recorder        record.EventRecorder
+	onStateChange   func()
 
-	mu           sync.Mutex
-	shadowClaims map[types.UID][]shadowRecord
+	mu              sync.Mutex
+	shadowClaims    map[types.UID][]shadowRecord
+	preparedDevices map[types.UID][]PreparedDevice
+	preparedComps   map[types.UID]string
 }
 
 type shadowRecord struct {
@@ -62,7 +71,9 @@ func NewCompositePlugin(
 		grpcClient:     grpcClient,
 		stateStore:     stateStore,
 		recorder:       recorder,
-		shadowClaims:   make(map[types.UID][]shadowRecord),
+		shadowClaims:    make(map[types.UID][]shadowRecord),
+		preparedDevices: make(map[types.UID][]PreparedDevice),
+		preparedComps:   make(map[types.UID]string),
 	}
 
 	if stateStore != nil {
@@ -70,6 +81,32 @@ func NewCompositePlugin(
 	}
 
 	return p
+}
+
+// SetOnStateChange registers a callback invoked after Prepare/Unprepare
+// completes, allowing the synthesizer to recompute with updated device state.
+func (p *CompositePlugin) SetOnStateChange(fn func()) {
+	p.onStateChange = fn
+}
+
+// PreparedDevicesByComposition returns a snapshot of underlying devices
+// currently prepared, grouped by composition name.
+func (p *CompositePlugin) PreparedDevicesByComposition() map[string][]PreparedDevice {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	result := make(map[string][]PreparedDevice)
+	for uid, devs := range p.preparedDevices {
+		comp := p.preparedComps[uid]
+		result[comp] = append(result[comp], devs...)
+	}
+	return result
+}
+
+func (p *CompositePlugin) notifyStateChange() {
+	if p.onStateChange != nil {
+		go p.onStateChange()
+	}
 }
 
 func (p *CompositePlugin) PrepareResourceClaims(
@@ -258,8 +295,15 @@ func (p *CompositePlugin) prepareClaim(
 		}
 	}
 
+	var prepared []PreparedDevice
+	for _, w := range work {
+		prepared = append(prepared, PreparedDevice{SourceName: w.member.SourceName, Device: w.member.Device})
+	}
+
 	p.mu.Lock()
 	p.shadowClaims[claim.UID] = shadows
+	p.preparedDevices[claim.UID] = prepared
+	p.preparedComps[claim.UID] = composition
 	p.mu.Unlock()
 
 	p.persistShadows(claim, shadows)
@@ -274,6 +318,8 @@ func (p *CompositePlugin) prepareClaim(
 
 	klog.InfoS("plugin: prepared claim", "namespace", claim.Namespace, "claim", claim.Name, "compositeDevices", len(allDevices), "shadowClaims", len(shadows))
 
+	p.notifyStateChange()
+
 	return allDevices, nil
 }
 
@@ -284,6 +330,8 @@ func (p *CompositePlugin) unprepareClaim(
 	p.mu.Lock()
 	shadows := p.shadowClaims[claim.UID]
 	delete(p.shadowClaims, claim.UID)
+	delete(p.preparedDevices, claim.UID)
+	delete(p.preparedComps, claim.UID)
 	p.mu.Unlock()
 
 	var errs []error
@@ -327,6 +375,9 @@ func (p *CompositePlugin) unprepareClaim(
 		"Cleaned up %d shadow claims", shadowCount)
 
 	klog.InfoS("plugin: unprepared claim", "namespace", claim.Namespace, "claim", claim.Name, "shadowClaims", shadowCount)
+
+	p.notifyStateChange()
+
 	return nil
 }
 
