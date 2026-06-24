@@ -82,7 +82,7 @@ func (p *Pairer) computeForComposition(comp config.CompositionConfig, devicesByS
 	}
 
 	if len(comp.Constraints) == 0 {
-		return p.pairWithoutConstraints(comp, filtered)
+		return p.pairSingleSource(comp, filtered)
 	}
 
 	return p.pairWithMatchAttribute(comp, filtered)
@@ -140,7 +140,10 @@ func (p *Pairer) pairWithMatchAttribute(comp config.CompositionConfig, devicesBy
 	return result
 }
 
-func (p *Pairer) pairWithoutConstraints(comp config.CompositionConfig, devicesBySource map[string][]SourceDevice) []CompositeDevice {
+// pairSingleSource generates composite devices from a single-source composition,
+// respecting member count via C(n,k) combinations. Validation ensures this is
+// only reached when the composition has one unique source.
+func (p *Pairer) pairSingleSource(comp config.CompositionConfig, devicesBySource map[string][]SourceDevice) []CompositeDevice {
 	combos := generateCombinations(comp.Members, devicesBySource)
 	var result []CompositeDevice
 	for _, combo := range combos {

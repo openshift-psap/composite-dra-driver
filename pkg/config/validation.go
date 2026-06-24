@@ -89,6 +89,16 @@ func Validate(cfg *CompositeConfig) error {
 			return fmt.Errorf("compositions[%d].pairingMode must be auto or explicit", i)
 		}
 
+		if pm != "explicit" && len(comp.Constraints) == 0 {
+			uniqueSources := make(map[string]bool)
+			for _, m := range comp.Members {
+				uniqueSources[m.Source] = true
+			}
+			if len(uniqueSources) > 1 {
+				return fmt.Errorf("compositions[%d]: auto pairing with multiple sources requires at least one constraint", i)
+			}
+		}
+
 		if pm == "explicit" {
 			if len(comp.NodePools) == 0 {
 				return fmt.Errorf("compositions[%d]: pairingMode explicit requires at least one nodePools entry", i)
