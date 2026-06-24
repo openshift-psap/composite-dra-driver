@@ -70,8 +70,10 @@ func (s *Synthesizer) SetPreparedDevicesFunc(fn PreparedDevicesFunc) {
 	s.preparedDevices = fn
 }
 
-// Recompute triggers a recomputation of composite devices. Exported so the
-// plugin can call it after Prepare/Unprepare to update ResourceSlices.
+// Recompute triggers an immediate recomputation of composite devices.
+// Called by the plugin after Prepare/Unprepare to update ResourceSlice pools
+// as fast as possible. No debounce — each Prepare/Unprepare is a single call,
+// not a burst. Runs in the caller's goroutine (plugin already dispatches via go).
 func (s *Synthesizer) Recompute() {
 	s.recompute()
 }
