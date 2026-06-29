@@ -180,7 +180,7 @@ oc port-forward -n composite-dra-system <driver-pod> 8080:8080
 curl -s localhost:8080/metrics | grep composite_dra
 
 # Key metrics
-curl -s localhost:8080/metrics | grep composite_dra_synthesis_devices_total    # devices published
+curl -s localhost:8080/metrics | grep composite_dra_synthesis_devices_available    # devices published
 curl -s localhost:8080/metrics | grep composite_dra_claims_active              # claims prepared
 curl -s localhost:8080/metrics | grep composite_dra_shadow_claims_active       # shadow claims
 
@@ -189,7 +189,7 @@ oc describe resourceclaim <name> -n <namespace>    # shows PrepareStarted/Comple
 oc get events --field-selector reason=PrepareCompleted
 
 # OpenShift: metrics in console
-# Observe > Metrics > composite_dra_synthesis_devices_total
+# Observe > Metrics > composite_dra_synthesis_devices_available
 
 # Enable ServiceMonitor scraping
 helm upgrade composite ... --set metrics.serviceMonitor.enabled=true

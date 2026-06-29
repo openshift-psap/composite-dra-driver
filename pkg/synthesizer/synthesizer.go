@@ -17,16 +17,20 @@ import (
 	"github.com/openshift-psap/composite-dra-driver/pkg/store"
 )
 
+// PreparedDevicesFunc returns underlying devices currently prepared, grouped by composition.
+type PreparedDevicesFunc func() map[string][]struct{ SourceName, Device string }
+
 // Synthesizer watches underlying ResourceSlices, computes valid device groupings,
 // publishes composite ResourceSlices, and maintains the DeviceStore.
 type Synthesizer struct {
-	cfg        *config.CompositeConfig
-	nodeName   string
-	kubeClient kubernetes.Interface
-	watcher    *Watcher
-	pairer     *Pairer
-	publisher  ResourcePublisher
-	store      *store.DeviceStore
+	cfg             *config.CompositeConfig
+	nodeName        string
+	kubeClient      kubernetes.Interface
+	watcher         *Watcher
+	pairer          *Pairer
+	publisher       ResourcePublisher
+	store           *store.DeviceStore
+	preparedDevices PreparedDevicesFunc
 }
 
 func New(cfg *config.CompositeConfig, nodeName string, kubeClient kubernetes.Interface, deviceStore *store.DeviceStore, publisher ResourcePublisher) *Synthesizer {
@@ -60,6 +64,20 @@ func FetchNodeLabels(kubeClient kubernetes.Interface, nodeName string) map[strin
 	return node.Labels
 }
 
+// SetPreparedDevicesFunc sets the function used to query which underlying
+// devices are currently prepared. Used for cross-composition device exclusion.
+func (s *Synthesizer) SetPreparedDevicesFunc(fn PreparedDevicesFunc) {
+	s.preparedDevices = fn
+}
+
+// Recompute triggers an immediate recomputation of composite devices.
+// Called by the plugin after Prepare/Unprepare to update ResourceSlice pools
+// as fast as possible. No debounce — each Prepare/Unprepare is a single call,
+// not a burst. Runs in the caller's goroutine (plugin already dispatches via go).
+func (s *Synthesizer) Recompute() {
+	s.recompute()
+}
+
 func (s *Synthesizer) Start(ctx context.Context) error {
 	klog.InfoS("synthesizer: starting", "node", s.nodeName)
 	return s.watcher.Start(ctx)
@@ -81,16 +99,30 @@ func (s *Synthesizer) recompute() {
 		klog.V(2).InfoS("synthesizer: source device count", "source", name, "count", len(devs))
 	}
 
-	compositeDevices := s.pairer.ComputePairs(devicesBySource)
+	var preparedByComp map[string][]struct{ SourceName, Device string }
+	if s.preparedDevices != nil {
+		preparedByComp = s.preparedDevices()
+	}
+
+	// Compute capacity (no exclusion) for metrics
+	capacityDevices := s.pairer.ComputePairs(devicesBySource)
+	capacityByComp := make(map[string]int)
+	for _, cd := range capacityDevices {
+		capacityByComp[cd.Mapping.CompositionName]++
+	}
+	for _, comp := range s.cfg.Compositions {
+		metrics.SynthesisDevicesCapacity.WithLabelValues(comp.Name).Set(float64(capacityByComp[comp.Name]))
+	}
+
+	compositeDevices := s.pairer.ComputePairsWithExclusion(devicesBySource, preparedByComp)
 	klog.InfoS("synthesizer: computed composite devices", "count", len(compositeDevices), "sourceDevices", totalDevices)
 
-	// Update per-composition device count gauge
 	countByComposition := make(map[string]int)
 	for _, cd := range compositeDevices {
 		countByComposition[cd.Mapping.CompositionName]++
 	}
 	for _, comp := range s.cfg.Compositions {
-		metrics.SynthesisDevicesTotal.WithLabelValues(comp.Name).Set(float64(countByComposition[comp.Name]))
+		metrics.SynthesisDevicesAvailable.WithLabelValues(comp.Name).Set(float64(countByComposition[comp.Name]))
 	}
 
 	newMappings := make(map[string]*store.DeviceMapping, len(compositeDevices))

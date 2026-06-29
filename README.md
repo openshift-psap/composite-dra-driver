@@ -158,7 +158,7 @@ Both binaries serve Prometheus metrics on `/metrics` (port 8080, configurable). 
 
 | Metric | What it tells you |
 |--------|-------------------|
-| `composite_dra_synthesis_devices_total` | Composite devices published per composition per node |
+| `composite_dra_synthesis_devices_available` | Composite devices available for allocation per composition (after exclusion) |
 | `composite_dra_claims_active` | Composite claims currently prepared (allocated) |
 | `composite_dra_prepare_duration_seconds` | End-to-end Prepare latency (pod startup contribution) |
 | `composite_dra_webhook_errors_total` | Webhook mutation failures by stage |
@@ -178,7 +178,7 @@ Enable Prometheus scraping: `--set metrics.serviceMonitor.enabled=true` in Helm 
 
 - **No NUMA affinity enforcement** — composite devices carry `numaNode` as an attribute but the webhook does not generate MatchAttribute constraints. NUMA packing requires manual ResourceClaimTemplates with explicit constraints. ([#1](https://github.com/openshift-psap/composite-dra-driver/issues/1), [Discussion #11](https://github.com/openshift-psap/composite-dra-driver/discussions/11))
 
-- **Device sharing conflict across compositions** — when multiple compositions share a source (e.g. GPU appears in both `gpu` and `gpu-nic-pair`), the scheduler can allocate the same physical device to both compositions on the same node. Each composition publishes an independent pool — the scheduler has no cross-pool mutual exclusion. Safe when pods land on different nodes or only one composition is actively used at a time. Fix requires pairer-side device partitioning. ([#28](https://github.com/openshift-psap/composite-dra-driver/issues/28))
+- **Cross-composition device exclusion has a small race window** — when a device is prepared by one composition, the synthesizer recomputes to exclude it from other compositions' pools. A brief window exists between allocation and recompute where the scheduler could still pick a stale composite device (Prepare would fail, scheduler reschedules). ([#28](https://github.com/openshift-psap/composite-dra-driver/issues/28))
 
 - **VF support requires external IPAM** — PF mode works with the external device params ConfigMap. VF mode needs an external controller to allocate IPs and populate the ConfigMap (VFs lack `dra.net/ipv4`). ([#34](https://github.com/openshift-psap/composite-dra-driver/issues/34))
 
