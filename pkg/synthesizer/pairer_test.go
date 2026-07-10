@@ -671,6 +671,97 @@ func TestPairer_ExplicitPairing_AttributeForwarding(t *testing.T) {
 	}
 }
 
+func TestPairer_CrossCompositionExclusion(t *testing.T) {
+	sources := []config.SourceConfig{
+		{Name: "gpu", Driver: "gpu.nvidia.com", DeviceClassName: "gpu.nvidia.com",
+			ForwardAttributes: []config.AttributeGroup{
+				{Domain: "resource.kubernetes.io", Attributes: []string{"pcieRoot"}},
+			}},
+		{Name: "nic", Driver: "dra.net", DeviceClassName: "dranet",
+			ForwardAttributes: []config.AttributeGroup{
+				{Domain: "resource.kubernetes.io", Attributes: []string{"pcieRoot"}},
+			}},
+	}
+	compositions := []config.CompositionConfig{
+		{
+			Name:    "gpu-nic-pair",
+			Members: []config.MemberConfig{{Source: "gpu", Count: 1}, {Source: "nic", Count: 1}},
+			Constraints: []config.ConstraintConfig{
+				{Type: "matchAttribute", Attribute: "resource.kubernetes.io/pcieRoot"},
+			},
+		},
+		{
+			Name:    "gpu",
+			Members: []config.MemberConfig{{Source: "gpu", Count: 1}},
+		},
+	}
+
+	pairer := NewPairer(sources, compositions, nil)
+
+	devices := map[string][]SourceDevice{
+		"gpu": {
+			{SourceName: "gpu", Driver: "gpu.nvidia.com", Pool: "p", DeviceName: "gpu-0",
+				Attributes: map[string]resourceapi.DeviceAttribute{"resource.kubernetes.io/pcieRoot": strAttr("root-0")}},
+			{SourceName: "gpu", Driver: "gpu.nvidia.com", Pool: "p", DeviceName: "gpu-1",
+				Attributes: map[string]resourceapi.DeviceAttribute{"resource.kubernetes.io/pcieRoot": strAttr("root-1")}},
+			{SourceName: "gpu", Driver: "gpu.nvidia.com", Pool: "p", DeviceName: "gpu-2",
+				Attributes: map[string]resourceapi.DeviceAttribute{"resource.kubernetes.io/pcieRoot": strAttr("root-2")}},
+		},
+		"nic": {
+			{SourceName: "nic", Driver: "dra.net", Pool: "p", DeviceName: "nic-0",
+				Attributes: map[string]resourceapi.DeviceAttribute{"resource.kubernetes.io/pcieRoot": strAttr("root-0")}},
+			{SourceName: "nic", Driver: "dra.net", Pool: "p", DeviceName: "nic-1",
+				Attributes: map[string]resourceapi.DeviceAttribute{"resource.kubernetes.io/pcieRoot": strAttr("root-1")}},
+		},
+	}
+
+	// Without exclusion: gpu-nic-pair gets 2 pairs (root-0, root-1), gpu gets all 3
+	noExclusion := pairer.ComputePairs(devices)
+	gpuNicCount := 0
+	gpuOnlyCount := 0
+	for _, cd := range noExclusion {
+		if cd.Mapping.CompositionName == "gpu-nic-pair" {
+			gpuNicCount++
+		} else {
+			gpuOnlyCount++
+		}
+	}
+	if gpuNicCount != 2 {
+		t.Fatalf("expected 2 gpu-nic pairs, got %d", gpuNicCount)
+	}
+	if gpuOnlyCount != 3 {
+		t.Fatalf("expected 3 gpu-only devices, got %d", gpuOnlyCount)
+	}
+
+	// With exclusion: gpu-nic-pair prepared gpu-0 and gpu-1 → gpu composition should only get gpu-2
+	prepared := map[string][]struct{ SourceName, Device string }{
+		"gpu-nic-pair": {
+			{SourceName: "gpu", Device: "gpu-0"},
+			{SourceName: "gpu", Device: "gpu-1"},
+			{SourceName: "nic", Device: "nic-0"},
+			{SourceName: "nic", Device: "nic-1"},
+		},
+	}
+	withExclusion := pairer.ComputePairsWithExclusion(devices, prepared)
+	gpuNicCount = 0
+	gpuOnlyCount = 0
+	for _, cd := range withExclusion {
+		if cd.Mapping.CompositionName == "gpu-nic-pair" {
+			gpuNicCount++
+		} else {
+			gpuOnlyCount++
+		}
+	}
+	// gpu-nic-pair: still sees all devices (own composition not excluded)
+	if gpuNicCount != 2 {
+		t.Fatalf("expected 2 gpu-nic pairs (own devices not excluded), got %d", gpuNicCount)
+	}
+	// gpu: gpu-0 and gpu-1 excluded (prepared by gpu-nic-pair), only gpu-2 remains
+	if gpuOnlyCount != 1 {
+		t.Fatalf("expected 1 gpu-only device (gpu-2), got %d", gpuOnlyCount)
+	}
+}
+
 func TestChooseCombinations(t *testing.T) {
 	tests := []struct {
 		n, k     int

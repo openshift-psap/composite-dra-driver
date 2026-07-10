@@ -49,6 +49,7 @@ type CompositionConfig struct {
 	ExtendedResourceName string                       `json:"extendedResourceName,omitempty"`
 	NodePoolLabelKey     string                       `json:"nodePoolLabelKey,omitempty"`
 	NodePools            []ExplicitNodePool           `json:"nodePools,omitempty"`
+	Priority             int                          `json:"priority,omitempty"`
 }
 
 func (c *CompositionConfig) EffectiveDeviceClassName() string {

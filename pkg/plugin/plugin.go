@@ -6,12 +6,14 @@ package plugin
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	resourceapi "k8s.io/api/resource/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/record"
@@ -23,6 +25,12 @@ import (
 	"github.com/openshift-psap/composite-dra-driver/pkg/store"
 )
 
+// PreparedDevice identifies an underlying device currently prepared by the composite driver.
+type PreparedDevice struct {
+	SourceName string
+	Device     string
+}
+
 // CompositePlugin implements kubeletplugin.DRAPlugin for the composite driver.
 type CompositePlugin struct {
 	driverName      string
@@ -32,9 +40,12 @@ type CompositePlugin struct {
 	grpcClient      *GRPCClient
 	stateStore      *store.StateStore
 	recorder        record.EventRecorder
+	onStateChange   func()
 
-	mu           sync.Mutex
-	shadowClaims map[types.UID][]shadowRecord
+	mu              sync.Mutex
+	shadowClaims    map[types.UID][]shadowRecord
+	preparedDevices map[types.UID][]PreparedDevice
+	preparedComps   map[types.UID]string
 }
 
 type shadowRecord struct {
@@ -62,7 +73,9 @@ func NewCompositePlugin(
 		grpcClient:     grpcClient,
 		stateStore:     stateStore,
 		recorder:       recorder,
-		shadowClaims:   make(map[types.UID][]shadowRecord),
+		shadowClaims:    make(map[types.UID][]shadowRecord),
+		preparedDevices: make(map[types.UID][]PreparedDevice),
+		preparedComps:   make(map[types.UID]string),
 	}
 
 	if stateStore != nil {
@@ -70,6 +83,32 @@ func NewCompositePlugin(
 	}
 
 	return p
+}
+
+// SetOnStateChange registers a callback invoked after Prepare/Unprepare
+// completes, allowing the synthesizer to recompute with updated device state.
+func (p *CompositePlugin) SetOnStateChange(fn func()) {
+	p.onStateChange = fn
+}
+
+// PreparedDevicesByComposition returns a snapshot of underlying devices
+// currently prepared, grouped by composition name.
+func (p *CompositePlugin) PreparedDevicesByComposition() map[string][]PreparedDevice {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	result := make(map[string][]PreparedDevice)
+	for uid, devs := range p.preparedDevices {
+		comp := p.preparedComps[uid]
+		result[comp] = append(result[comp], devs...)
+	}
+	return result
+}
+
+func (p *CompositePlugin) notifyStateChange() {
+	if p.onStateChange != nil {
+		go p.onStateChange()
+	}
 }
 
 func (p *CompositePlugin) PrepareResourceClaims(
@@ -230,6 +269,9 @@ func (p *CompositePlugin) prepareClaim(
 		if w.err != nil {
 			p.recorder.Eventf(claim, corev1.EventTypeWarning, "PrepareFailed",
 				"gRPC prepare failed for driver %s: %v", w.shadow.driverName, w.err)
+			if isDeviceConflict(w.err) {
+				p.reportDeviceConflict(ctx, claim, w.allocResult)
+			}
 			p.cleanupShadows(ctx, shadows)
 			return nil, w.err
 		}
@@ -258,8 +300,15 @@ func (p *CompositePlugin) prepareClaim(
 		}
 	}
 
+	var prepared []PreparedDevice
+	for _, w := range work {
+		prepared = append(prepared, PreparedDevice{SourceName: w.member.SourceName, Device: w.member.Device})
+	}
+
 	p.mu.Lock()
 	p.shadowClaims[claim.UID] = shadows
+	p.preparedDevices[claim.UID] = prepared
+	p.preparedComps[claim.UID] = composition
 	p.mu.Unlock()
 
 	p.persistShadows(claim, shadows)
@@ -274,6 +323,8 @@ func (p *CompositePlugin) prepareClaim(
 
 	klog.InfoS("plugin: prepared claim", "namespace", claim.Namespace, "claim", claim.Name, "compositeDevices", len(allDevices), "shadowClaims", len(shadows))
 
+	p.notifyStateChange()
+
 	return allDevices, nil
 }
 
@@ -284,6 +335,8 @@ func (p *CompositePlugin) unprepareClaim(
 	p.mu.Lock()
 	shadows := p.shadowClaims[claim.UID]
 	delete(p.shadowClaims, claim.UID)
+	delete(p.preparedDevices, claim.UID)
+	delete(p.preparedComps, claim.UID)
 	p.mu.Unlock()
 
 	var errs []error
@@ -327,6 +380,9 @@ func (p *CompositePlugin) unprepareClaim(
 		"Cleaned up %d shadow claims", shadowCount)
 
 	klog.InfoS("plugin: unprepared claim", "namespace", claim.Namespace, "claim", claim.Name, "shadowClaims", shadowCount)
+
+	p.notifyStateChange()
+
 	return nil
 }
 
@@ -394,4 +450,43 @@ func (p *CompositePlugin) restoreFromState() {
 		p.shadowClaims[uid] = shadows
 	}
 	klog.InfoS("plugin: restored shadow claim records from state", "count", len(records))
+}
+
+func isDeviceConflict(err error) bool {
+	return strings.Contains(err.Error(), "already allocated to different claim")
+}
+
+// reportDeviceConflict writes a DeviceConflict=True condition to the claim's
+// device status as a fallback when the binding watcher didn't catch the conflict.
+// Replaces existing device statuses to avoid duplicate deviceID errors.
+func (p *CompositePlugin) reportDeviceConflict(ctx context.Context, claim *resourceapi.ResourceClaim, allocResult resourceapi.DeviceRequestAllocationResult) {
+	var deviceStatuses []resourceapi.AllocatedDeviceStatus
+	for _, result := range claim.Status.Allocation.Devices.Results {
+		if result.Driver != p.driverName {
+			continue
+		}
+		deviceStatuses = append(deviceStatuses, resourceapi.AllocatedDeviceStatus{
+			Driver: result.Driver,
+			Pool:   result.Pool,
+			Device: result.Device,
+			Conditions: []metav1.Condition{
+				{
+					Type:               "DeviceConflict",
+					Status:             metav1.ConditionTrue,
+					LastTransitionTime: metav1.Now(),
+					Reason:             "UnderlyingDeviceAlreadyAllocated",
+					Message:            fmt.Sprintf("Device %s/%s is already allocated to another composition's claim", allocResult.Pool, allocResult.Device),
+				},
+			},
+		})
+	}
+
+	claimCopy := claim.DeepCopy()
+	claimCopy.Status.Devices = deviceStatuses
+
+	if _, err := p.claimMgr.Client().ResourceClaims(claim.Namespace).UpdateStatus(ctx, claimCopy, metav1.UpdateOptions{}); err != nil {
+		klog.ErrorS(err, "plugin: failed to report DeviceConflict", "claim", claim.Name, "device", allocResult.Device)
+	} else {
+		klog.InfoS("plugin: reported DeviceConflict for scheduler retry", "claim", claim.Name, "device", allocResult.Device)
+	}
 }
