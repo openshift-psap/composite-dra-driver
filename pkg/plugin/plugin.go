@@ -17,21 +17,40 @@ import (
 	"k8s.io/client-go/tools/record"
 	"k8s.io/dynamic-resource-allocation/kubeletplugin"
 	"k8s.io/klog/v2"
+	drapbv1 "k8s.io/kubelet/pkg/apis/dra/v1"
 
 	"github.com/openshift-psap/composite-dra-driver/pkg/metrics"
 	"github.com/openshift-psap/composite-dra-driver/pkg/shadow"
 	"github.com/openshift-psap/composite-dra-driver/pkg/store"
 )
 
+// shadowPreparer prepares and unprepares a shadow claim on an underlying DRA driver.
+// The plugin depends on this narrow interface (satisfied by *GRPCClient) so the
+// prepare and rollback paths can be exercised without a live gRPC socket.
+type shadowPreparer interface {
+	Prepare(ctx context.Context, driverName string, claim *shadow.ShadowClaimInfo) (*drapbv1.NodePrepareResourceResponse, error)
+	Unprepare(ctx context.Context, driverName string, claim *shadow.ShadowClaimInfo) error
+}
+
+// shadowClaimManager creates, adopts, and deletes shadow ResourceClaims. It is the
+// narrow interface the plugin needs (satisfied by *shadow.ClaimManager), kept small
+// so failure paths can be driven with a fake in tests.
+type shadowClaimManager interface {
+	Create(ctx context.Context, compositeClaim *resourceapi.ResourceClaim, member *store.DeviceMember, requestName string, opaqueConfig []byte) (*shadow.ShadowClaimInfo, error)
+	Get(ctx context.Context, compositeClaim *resourceapi.ResourceClaim, member *store.DeviceMember, requestName string) (*shadow.ShadowClaimInfo, error)
+	Delete(ctx context.Context, info *shadow.ShadowClaimInfo) error
+	ListForCompositeClaim(ctx context.Context, namespace, compositeClaimUID string) ([]shadow.AdoptedShadow, error)
+}
+
 // CompositePlugin implements kubeletplugin.DRAPlugin for the composite driver.
 type CompositePlugin struct {
-	driverName      string
-	deviceStore     *store.DeviceStore
-	claimMgr        *shadow.ClaimManager
-	paramsResolver  *shadow.DeviceParamsResolver
-	grpcClient      *GRPCClient
-	stateStore      *store.StateStore
-	recorder        record.EventRecorder
+	driverName     string
+	deviceStore    *store.DeviceStore
+	claimMgr       shadowClaimManager
+	paramsResolver *shadow.DeviceParamsResolver
+	grpcClient     shadowPreparer
+	stateStore     *store.StateStore
+	recorder       record.EventRecorder
 
 	mu           sync.Mutex
 	shadowClaims map[types.UID][]shadowRecord
@@ -41,6 +60,7 @@ type shadowRecord struct {
 	driverName  string
 	composition string
 	info        *shadow.ShadowClaimInfo
+	created     bool // this Prepare attempt created the shadow, rather than adopting an existing one
 }
 
 var _ kubeletplugin.DRAPlugin = (*CompositePlugin)(nil)
@@ -48,9 +68,9 @@ var _ kubeletplugin.DRAPlugin = (*CompositePlugin)(nil)
 func NewCompositePlugin(
 	driverName string,
 	deviceStore *store.DeviceStore,
-	claimMgr *shadow.ClaimManager,
+	claimMgr shadowClaimManager,
 	paramsResolver *shadow.DeviceParamsResolver,
-	grpcClient *GRPCClient,
+	grpcClient shadowPreparer,
 	stateStore *store.StateStore,
 	recorder record.EventRecorder,
 ) *CompositePlugin {
@@ -101,15 +121,44 @@ func (p *CompositePlugin) HandleError(ctx context.Context, err error, msg string
 
 // memberWork holds the inputs and outputs for one member's parallel prepare.
 type memberWork struct {
-	pairIdx     int
-	memberIdx   int
-	member      store.DeviceMember
-	allocResult resourceapi.DeviceRequestAllocationResult
+	pairIdx      int
+	memberIdx    int
+	member       store.DeviceMember
+	allocResult  resourceapi.DeviceRequestAllocationResult
 	opaqueConfig []byte
 
-	shadow   shadowRecord
-	cdiIDs   []string
-	err      error
+	shadow shadowRecord
+	cdiIDs []string
+	err    error
+}
+
+// rejectDuplicateMembers fails closed when two composite devices in the same
+// claim resolve to the same underlying (driver, pool, device) member. The shadow
+// claim name is keyed on the member alone, so two work items for one member would
+// collapse onto a single shadow: the second Create gets AlreadyExists and adopts
+// the first, and the same underlying device (with its CDI IDs) ends up satisfying
+// both composite devices while the caller believes it got two. Sharing an
+// underlying device is not modeled yet, so reject the allocation before any shadow
+// is created rather than silently over-allocating.
+func rejectDuplicateMembers(work []*memberWork) error {
+	type memberKey struct {
+		driver, pool, device string
+	}
+	type occurrence struct {
+		compositePool, compositeDevice string
+	}
+	seen := make(map[memberKey]occurrence, len(work))
+	for _, w := range work {
+		key := memberKey{driver: w.member.Driver, pool: w.member.Pool, device: w.member.Device}
+		cur := occurrence{compositePool: w.allocResult.Pool, compositeDevice: w.allocResult.Device}
+		if prev, found := seen[key]; found {
+			return fmt.Errorf("composite devices %s/%s and %s/%s share underlying member %s/%s/%s; sharing an underlying device is not supported",
+				prev.compositePool, prev.compositeDevice, cur.compositePool, cur.compositeDevice,
+				key.driver, key.pool, key.device)
+		}
+		seen[key] = cur
+	}
+	return nil
 }
 
 func (p *CompositePlugin) prepareClaim(
@@ -160,6 +209,11 @@ func (p *CompositePlugin) prepareClaim(
 		pairOrdinal++
 	}
 
+	if err := rejectDuplicateMembers(work); err != nil {
+		p.recorder.Eventf(claim, corev1.EventTypeWarning, "PrepareFailed", "%v", err)
+		return nil, err
+	}
+
 	// Phase 1: Create all shadow claims in parallel
 	shadowStart := time.Now()
 	var wg sync.WaitGroup
@@ -167,11 +221,13 @@ func (p *CompositePlugin) prepareClaim(
 		wg.Add(1)
 		go func(w *memberWork) {
 			defer wg.Done()
+			created := true
 			shadowInfo, err := p.claimMgr.Create(ctx, claim, &w.member, w.allocResult.Request, w.opaqueConfig)
 			if err != nil {
 				if errors.IsAlreadyExists(err) {
 					klog.V(2).InfoS("plugin: shadow claim already exists, fetching existing", "driver", w.member.Driver, "device", w.member.Device)
-					shadowInfo, err = p.claimMgr.Get(ctx, claim, &w.member)
+					created = false
+					shadowInfo, err = p.claimMgr.Get(ctx, claim, &w.member, w.allocResult.Request)
 					if err != nil {
 						w.err = fmt.Errorf("get existing shadow for %s/%s: %w", w.member.Driver, w.member.Device, err)
 						return
@@ -181,7 +237,7 @@ func (p *CompositePlugin) prepareClaim(
 					return
 				}
 			}
-			w.shadow = shadowRecord{driverName: w.member.Driver, composition: composition, info: shadowInfo}
+			w.shadow = shadowRecord{driverName: w.member.Driver, composition: composition, info: shadowInfo, created: created}
 		}(w)
 	}
 	wg.Wait()
@@ -201,7 +257,9 @@ func (p *CompositePlugin) prepareClaim(
 		}
 	}
 	if firstErr != nil {
-		p.cleanupShadows(ctx, shadows)
+		// Phase 1 failure: no gRPC Prepare has run yet, so the created shadows can be
+		// deleted directly.
+		p.cleanupShadows(ctx, shadows, false)
 		return nil, firstErr
 	}
 
@@ -230,7 +288,9 @@ func (p *CompositePlugin) prepareClaim(
 		if w.err != nil {
 			p.recorder.Eventf(claim, corev1.EventTypeWarning, "PrepareFailed",
 				"gRPC prepare failed for driver %s: %v", w.shadow.driverName, w.err)
-			p.cleanupShadows(ctx, shadows)
+			// Phase 2 failure: gRPC Prepare has run, so unprepare before deleting and keep
+			// any shadow that fails to unprepare.
+			p.cleanupShadows(ctx, shadows, true)
 			return nil, w.err
 		}
 	}
@@ -242,8 +302,8 @@ func (p *CompositePlugin) prepareClaim(
 		dev, ok := devicesByPair[key]
 		if !ok {
 			dev = &kubeletplugin.Device{
-				Requests: []string{w.allocResult.Request},
-				PoolName: w.allocResult.Pool,
+				Requests:   []string{w.allocResult.Request},
+				PoolName:   w.allocResult.Pool,
 				DeviceName: w.allocResult.Device,
 			}
 			devicesByPair[key] = dev
@@ -260,14 +320,15 @@ func (p *CompositePlugin) prepareClaim(
 
 	p.mu.Lock()
 	p.shadowClaims[claim.UID] = shadows
+	p.setActiveMetricsForCompositionLocked(composition)
 	p.mu.Unlock()
 
-	p.persistShadows(claim, shadows)
+	if err := p.persistShadows(string(claim.UID), claim.Namespace, shadows); err != nil {
+		klog.ErrorS(err, "plugin: persist shadow state failed", "uid", claim.UID)
+	}
 
 	elapsed := time.Since(prepareStart)
 	metrics.PrepareDurationSeconds.WithLabelValues(composition).Observe(elapsed.Seconds())
-	metrics.ClaimsActive.WithLabelValues(composition).Inc()
-	metrics.ShadowClaimsActive.WithLabelValues(composition).Add(float64(len(shadows)))
 
 	p.recorder.Eventf(claim, corev1.EventTypeNormal, "PrepareCompleted",
 		"Prepared %d composite devices with %d shadow claims in %s", len(allDevices), len(shadows), elapsed.Round(time.Millisecond))
@@ -283,38 +344,96 @@ func (p *CompositePlugin) unprepareClaim(
 ) error {
 	p.mu.Lock()
 	shadows := p.shadowClaims[claim.UID]
-	delete(p.shadowClaims, claim.UID)
 	p.mu.Unlock()
 
 	var errs []error
+	var remaining []shadowRecord
 	shadowCount := len(shadows)
 	for _, sr := range shadows {
 		if err := p.grpcClient.Unprepare(ctx, sr.driverName, sr.info); err != nil {
 			klog.ErrorS(err, "plugin: unprepare shadow failed", "driver", sr.driverName, "shadow", sr.info.Name)
 			errs = append(errs, err)
+			remaining = append(remaining, sr)
+			continue
 		}
-		if err := p.claimMgr.Delete(ctx, sr.info.Namespace, sr.info.Name); err != nil {
+		if err := p.claimMgr.Delete(ctx, sr.info); err != nil {
 			klog.ErrorS(err, "plugin: delete shadow claim failed", "shadow", sr.info.Name)
 			errs = append(errs, err)
+			remaining = append(remaining, sr)
+			continue
 		}
 	}
 
 	if len(shadows) == 0 {
-		if err := p.claimMgr.DeleteForCompositeClaim(ctx, claim.Namespace, string(claim.UID)); err != nil {
-			klog.ErrorS(err, "plugin: cleanup orphaned shadows failed", "uid", claim.UID)
+		// No in-memory record, but shadows may still exist on the API server: a Prepare
+		// rollback kept one whose Unprepare failed, or they outlived a restart with no
+		// checkpoint. Unprepare each before deleting so the underlying resource is
+		// released, not just the shadow object left with a dangling preparation.
+		listed, err := p.claimMgr.ListForCompositeClaim(ctx, claim.Namespace, string(claim.UID))
+		if err != nil {
+			errs = append(errs, err)
+		}
+		for _, s := range listed {
+			info := &shadow.ShadowClaimInfo{Namespace: s.Info.Namespace, Name: s.Info.Name, UID: s.Info.UID}
+			if !s.HasAllocation {
+				// No status allocation means gRPC Prepare never ran for this shadow (it
+				// only runs after Create returns), so it holds no underlying resource.
+				// Delete the orphaned object so the claim's teardown is not blocked; this
+				// is the incomplete-shadow case from #70.
+				if derr := p.claimMgr.Delete(ctx, info); derr != nil {
+					errs = append(errs, derr)
+				}
+				continue
+			}
+			if s.Driver == "" || s.Driver == p.driverName {
+				// The allocation is present but its driver is unusable (empty, or the
+				// composite driver itself, which must not be called through its own
+				// socket). The underlying resource may be prepared, so keep the shadow and
+				// surface an error rather than a fail-open delete.
+				errs = append(errs, fmt.Errorf("orphaned shadow %s has an allocation but an unusable driver %q; keeping it", info.Name, s.Driver))
+				continue
+			}
+			if uerr := p.grpcClient.Unprepare(ctx, s.Driver, info); uerr != nil {
+				klog.ErrorS(uerr, "plugin: unprepare orphaned shadow failed, keeping it", "shadow", info.Name)
+				errs = append(errs, uerr)
+				continue
+			}
+			if derr := p.claimMgr.Delete(ctx, info); derr != nil {
+				errs = append(errs, derr)
+			}
 		}
 	}
 
-	p.deleteShadowState(string(claim.UID))
-
 	if len(errs) > 0 {
+		// Keep the recovery state for the shadows that did not unprepare, so a retry
+		// can drive them again. Persist it durably first, so a restart replays only the
+		// remaining shadows and not the ones already unprepared and deleted.
+		if len(remaining) > 0 {
+			if err := p.persistShadows(string(claim.UID), claim.Namespace, remaining); err != nil {
+				errs = append(errs, err)
+			}
+		}
+		p.mu.Lock()
+		p.shadowClaims[claim.UID] = remaining
+		if shadowCount > 0 {
+			p.setActiveMetricsForCompositionLocked(shadows[0].composition)
+		}
+		p.mu.Unlock()
 		return fmt.Errorf("%d errors during unprepare: %v", len(errs), errs)
 	}
 
-	if shadowCount > 0 {
-		metrics.ClaimsActive.WithLabelValues(shadows[0].composition).Dec()
-		metrics.ShadowClaimsActive.WithLabelValues(shadows[0].composition).Sub(float64(shadowCount))
+	// Everything unprepared. Delete the durable checkpoint before the in-memory record,
+	// and report a failure, so a restart cannot resurrect the claim from a stale
+	// checkpoint. A retry re-runs the (now idempotent) unprepare and delete.
+	if err := p.deleteShadowState(string(claim.UID)); err != nil {
+		return fmt.Errorf("delete shadow state for claim %s: %w", claim.UID, err)
 	}
+	p.mu.Lock()
+	delete(p.shadowClaims, claim.UID)
+	if shadowCount > 0 {
+		p.setActiveMetricsForCompositionLocked(shadows[0].composition)
+	}
+	p.mu.Unlock()
 
 	claimRef := &corev1.ObjectReference{
 		APIVersion: "resource.k8s.io/v1",
@@ -330,16 +449,65 @@ func (p *CompositePlugin) unprepareClaim(
 	return nil
 }
 
-func (p *CompositePlugin) cleanupShadows(ctx context.Context, shadows []shadowRecord) {
+// cleanupShadows rolls back the shadow claims a failed Prepare attempt created.
+//
+// Before gRPC Prepare has run (prepared=false) the shadows were never prepared on an
+// underlying driver, so they are deleted directly. After gRPC Prepare has run
+// (prepared=true) an underlying preparation may exist, so each shadow is unprepared
+// first and deleted only when that succeeds. A shadow whose Unprepare fails is left in
+// place: its API object and owner reference stay as the handle a Prepare retry adopts
+// (Create -> AlreadyExists -> Get) to release the underlying resource, instead of
+// deleting the shadow and leaking the resource with nothing left to unprepare it. This
+// is the Prepare-rollback side of the resource leak tracked in #64.
+//
+// A kept shadow is recovered when the kubelet retries Prepare, which re-adopts it and
+// re-drives the (idempotent, per the DRA contract) underlying Prepare. If the pod is
+// instead deleted before a retry succeeds, teardown falls to the claim's Unprepare
+// path rather than this one.
+func (p *CompositePlugin) cleanupShadows(ctx context.Context, shadows []shadowRecord, prepared bool) {
 	for _, sr := range shadows {
-		_ = p.grpcClient.Unprepare(ctx, sr.driverName, sr.info)
-		_ = p.claimMgr.Delete(ctx, sr.info.Namespace, sr.info.Name)
+		// Only roll back shadows this Prepare attempt created. A shadow adopted via
+		// AlreadyExists may already be prepared and in use by a running workload, so
+		// tearing it down on a later member's failure would break that workload.
+		if !sr.created {
+			continue
+		}
+		if prepared {
+			if err := p.grpcClient.Unprepare(ctx, sr.driverName, sr.info); err != nil {
+				// A gRPC error is an ambiguous outcome: the underlying resource may still
+				// be prepared. Keep the shadow so a retry can drive its Unprepare again.
+				klog.ErrorS(err, "plugin: rollback unprepare failed, keeping shadow for retry", "driver", sr.driverName, "shadow", sr.info.Name)
+				continue
+			}
+		}
+		if err := p.claimMgr.Delete(ctx, sr.info); err != nil {
+			klog.ErrorS(err, "plugin: rollback delete shadow failed", "shadow", sr.info.Name)
+		}
 	}
 }
 
-func (p *CompositePlugin) persistShadows(claim *resourceapi.ResourceClaim, shadows []shadowRecord) {
+// setActiveMetricsForCompositionLocked recomputes the active-claim and active-shadow
+// gauges for one composition from the authoritative in-memory map. Setting the absolute
+// value keeps the gauges correct across retries and restarts, where per-attempt
+// Inc/Dec drifts: a restart repopulates the map while the gauges start at zero, so the
+// next Unprepare would decrement them negative, and an idempotent Unprepare retry would
+// decrement a second time. The caller holds p.mu.
+func (p *CompositePlugin) setActiveMetricsForCompositionLocked(composition string) {
+	claims, shadows := 0, 0
+	for _, recs := range p.shadowClaims {
+		if len(recs) == 0 || recs[0].composition != composition {
+			continue
+		}
+		claims++
+		shadows += len(recs)
+	}
+	metrics.ClaimsActive.WithLabelValues(composition).Set(float64(claims))
+	metrics.ShadowClaimsActive.WithLabelValues(composition).Set(float64(shadows))
+}
+
+func (p *CompositePlugin) persistShadows(uid, namespace string, shadows []shadowRecord) error {
 	if p.stateStore == nil {
-		return
+		return nil
 	}
 	entries := make([]store.ShadowEntry, len(shadows))
 	for i, sr := range shadows {
@@ -351,22 +519,18 @@ func (p *CompositePlugin) persistShadows(claim *resourceapi.ResourceClaim, shado
 			Composition: sr.composition,
 		}
 	}
-	if err := p.stateStore.SaveShadows(store.ShadowRecord{
-		CompositeClaimUID: string(claim.UID),
-		Namespace:         claim.Namespace,
+	return p.stateStore.SaveShadows(store.ShadowRecord{
+		CompositeClaimUID: uid,
+		Namespace:         namespace,
 		Shadows:           entries,
-	}); err != nil {
-		klog.ErrorS(err, "plugin: persist shadow state failed", "uid", claim.UID)
-	}
+	})
 }
 
-func (p *CompositePlugin) deleteShadowState(compositeClaimUID string) {
+func (p *CompositePlugin) deleteShadowState(compositeClaimUID string) error {
 	if p.stateStore == nil {
-		return
+		return nil
 	}
-	if err := p.stateStore.DeleteShadows(compositeClaimUID); err != nil {
-		klog.ErrorS(err, "plugin: delete shadow state failed", "uid", compositeClaimUID)
-	}
+	return p.stateStore.DeleteShadows(compositeClaimUID)
 }
 
 func (p *CompositePlugin) restoreFromState() {
@@ -392,6 +556,14 @@ func (p *CompositePlugin) restoreFromState() {
 			})
 		}
 		p.shadowClaims[uid] = shadows
+	}
+	seen := make(map[string]bool)
+	for _, recs := range p.shadowClaims {
+		if len(recs) == 0 || seen[recs[0].composition] {
+			continue
+		}
+		seen[recs[0].composition] = true
+		p.setActiveMetricsForCompositionLocked(recs[0].composition)
 	}
 	klog.InfoS("plugin: restored shadow claim records from state", "count", len(records))
 }
